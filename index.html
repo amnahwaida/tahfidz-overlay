@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="id" dir="ltr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Overlay Tahfidz</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#FFD166">
+  <link rel="apple-touch-icon" href="icon.png">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('SW Registered'))
+          .catch(err => console.log('SW Registration Failed', err));
+      });
+    }
+  </script>
+  <style>
+    body,
+    html {
+      margin: 0;
+      min-height: 100vh;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: var(--vertical-align, center);
+      font-family: 'Inter', sans-serif;
+      box-sizing: border-box;
+      overflow-x: hidden; /* Cegah geser kanan-kiri */
+    }
+
+    #overlay {
+      direction: rtl; /* Teks Arab tetap dari kanan */
+      background: rgba(0, 0, 0, 0.7);
+      padding: var(--overlay-padding, 30px 50px);
+      border-radius: 20px;
+      text-align: var(--text-align, center);
+      max-width: var(--overlay-width, 85vw);
+      max-height: 85vh;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(12px);
+      transition: all 0.3s ease;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 209, 102, 0.3) transparent;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    #overlay::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #overlay::-webkit-scrollbar-thumb {
+      background: rgba(255, 209, 102, 0.3);
+      border-radius: 10px;
+    }
+
+    .hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.95);
+    }
+
+    #controls,
+    #controls * {
+      box-sizing: border-box;
+    }
+
+    .glass-panel {
+      direction: ltr; /* Kontrol dari kiri */
+      position: fixed;
+      left: 20px;
+      background: #1a1a1a;
+      border-radius: 16px;
+      opacity: 0.3;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      width: 340px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(15px);
+      color: #fff;
+    }
+
+    .glass-panel:hover {
+      opacity: 1;
+      transform: translateY(-2px);
+    }
+
+    #search-panel {
+      top: 20px;
+      padding: 20px;
+    }
+
+    #settings-panel {
+      top: 240px;
+      max-height: calc(100vh - 280px);
+      padding: 0;
+    }
+
+    #settings-panel.minimized {
+      max-height: 54px;
+      overflow: hidden;
+    }
+
+    /* ===== MOBILE LAYOUT ===== */
+    @media (max-width: 1023px) {
+      body, html {
+        display: block;
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+        background: #0f0f0f;
+        padding: 15px 15px 320px 15px;
+      }
+
+      #overlay {
+        display: none !important;
+      }
+
+      .glass-panel {
+        position: relative;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        opacity: 1;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 12px; /* Jarak antar panel lebih rapat */
+        overflow: visible;
+        top: auto !important; /* Reset posisi top desktop */
+        left: auto !important; /* Reset posisi left desktop */
+      }
+
+      #search-panel {
+        z-index: 1001; /* Lebih tinggi dari settings */
+      }
+
+      #settings-panel {
+        z-index: 1000;
+      }
+
+      .glass-panel:hover {
+        transform: none;
+      }
+
+      #settings-panel {
+        max-height: none;
+      }
+
+      #settings-panel.minimized {
+        max-height: 60px;
+      }
+
+      /* Perbesar semua tombol & input di mobile */
+      .glass-panel input,
+      .glass-panel select {
+        padding: 16px 20px;
+        font-size: 16px;
+        border-radius: 12px;
+      }
+
+      .glass-panel button {
+        padding: 18px 20px;
+        font-size: 18px;
+        border-radius: 14px;
+      }
+
+      .glass-panel button.secondary {
+        padding: 16px 20px;
+        font-size: 16px;
+      }
+
+      .control-header {
+        padding: 18px 20px;
+        font-size: 18px;
+      }
+
+      .control-label {
+        font-size: 13px;
+        margin-bottom: 6px;
+      }
+
+      .setting-item {
+        font-size: 15px;
+        padding: 4px 0;
+      }
+
+      .setting-item input[type="range"] {
+        height: 10px;
+      }
+
+      /* D-pad lebih besar di mobile */
+      .mobile-nav {
+        grid-template-columns: repeat(3, 90px);
+        grid-template-rows: repeat(3, 90px);
+        gap: 16px;
+      }
+
+      .nav-btn {
+        width: 90px;
+        height: 90px;
+        font-size: 36px;
+      }
+
+      .nav-center {
+        font-size: 28px;
+        background: rgba(255, 209, 102, 0.3);
+      }
+
+      /* Grid pengaturan 1 kolom agar slider panjang */
+      .settings-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        padding: 20px;
+      }
+
+      .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .setting-item span {
+        font-size: 14px;
+        font-weight: 600;
+        color: #FFD166;
+        word-wrap: break-word;
+      }
+
+      .setting-item input[type="range"] {
+        width: 100%;
+        height: 12px;
+        margin: 10px 0;
+      }
+
+      /* Thumb Slider Raksasa untuk Jempol */
+      .setting-item input[type="range"]::-webkit-slider-thumb {
+        width: 32px;
+        height: 32px;
+        background: #FFD166;
+        border: 3px solid #fff;
+        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        margin-top: -10px;
+      }
+      
+      .setting-item select {
+        width: 100%;
+        padding: 14px !important;
+        font-size: 16px !important;
+      }
+
+      /* Fix search input overflow */
+      .search-box {
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .search-box input {
+        width: 100%;
+        box-sizing: border-box;
+        padding-right: 50px !important; /* Ruang untuk tombol X */
+      }
+
+      .clear-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
+        right: 10px;
+      }
+
+      .result-item {
+        padding: 16px 20px;
+        font-size: 15px;
+      }
+    }
+
+    .control-header {
+      font-size: 16px;
+      font-weight: bold;
+      color: #FFD166;
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+    }
+
+    .minimize-btn {
+      margin-left: auto;
+      font-size: 18px;
+    }
+
+    .panel-content {
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .control-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .control-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .search-box {
+      width: 100%;
+      position: relative;
+    }
+
+    .results-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #2a2a2a;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      margin-top: 5px;
+      max-height: 250px;
+      overflow-y: auto;
+      z-index: 2000;
+      display: none;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+
+    .result-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      transition: background 0.2s;
+      text-align: left;
+    }
+
+    .result-item:hover {
+      background: #333;
+      color: #FFD166;
+    }
+
+    .result-item:last-child {
+      border-bottom: none;
+    }
+
+    .glass-panel input,
+    .glass-panel select,
+    .glass-panel button {
+      padding: 12px 16px;
+      font-size: 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: #2a2a2a;
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s ease;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .glass-panel input {
+      cursor: text;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .glass-panel input:focus,
+    .glass-panel select:focus {
+      border-color: #FFD166;
+      background: #333;
+      box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.2);
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #fff;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex; /* Selalu tampilkan */
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.2s;
+    }
+
+    .clear-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .glass-panel button {
+      background: #FFD166;
+      color: #000;
+      font-weight: 700;
+      border: none;
+      flex: 1;
+      letter-spacing: 0.5px;
+    }
+
+    .glass-panel button:hover {
+      background: #ffdb85;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 209, 102, 0.3);
+    }
+
+    .glass-panel button.secondary {
+      background: #333;
+      color: #eee;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    #controls button.secondary:hover {
+      background: #444;
+      color: #fff;
+    }
+
+    .control-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #aaa;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 14px;
+      border-radius: 12px;
+    }
+
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: #ddd;
+    }
+
+    .setting-item input[type="range"] {
+      width: 130px;
+      height: 6px;
+      -webkit-appearance: none;
+      background: #444;
+      border-radius: 3px;
+      border: none;
+    }
+
+    .setting-item input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #FFD166;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .setting-item select {
+      padding: 6px 10px !important;
+      font-size: 13px !important;
+      min-width: 100px;
+    }
+
+    .surah {
+      font-size: var(--surah-size, 24px);
+      color: #FFD166;
+      margin-bottom: 15px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      opacity: 0.9;
+      border-bottom: 1px solid rgba(255, 209, 102, 0.2);
+      padding-bottom: 10px;
+    }
+
+    .verse {
+      font-family: 'LPMQ Isep Misbah', 'Amiri', serif;
+      font-size: var(--verse-size, 64px);
+      line-height: var(--line-height, 1.6);
+      color: #fff;
+      margin: 20px 0;
+    }
+
+    .translation {
+      font-size: var(--trans-size, 24px);
+      color: #FFD166;
+      font-style: italic;
+      margin-top: 15px;
+      font-family: 'Inter', sans-serif;
+      line-height: 1.4;
+      display: var(--trans-display, block);
+      border-top: 1px solid rgba(255, 209, 102, 0.2);
+      padding-top: 15px;
+      direction: ltr;
+    }
+
+    .mobile-nav {
+      direction: ltr;
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: grid;
+      grid-template-columns: repeat(3, 70px);
+      grid-template-rows: repeat(3, 70px);
+      gap: 10px;
+      z-index: 5000;
+      opacity: 0.85;
+      pointer-events: auto;
+      transition: all 0.4s ease;
+    }
+
+    .mobile-nav:active {
+      opacity: 1;
+    }
+
+    .nav-btn {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid rgba(255, 209, 102, 0.5);
+      color: #FFD166;
+      font-size: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .nav-btn:active {
+      transform: scale(0.85);
+      background: rgba(255, 209, 102, 0.3);
+      border-color: #FFD166;
+    }
+
+    .nav-up {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .nav-left {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .nav-center {
+      grid-column: 2;
+      grid-row: 2;
+      font-size: 24px;
+      background: rgba(255, 209, 102, 0.2);
+    }
+
+    .nav-right {
+      grid-column: 3;
+      grid-row: 2;
+    }
+
+    .nav-down {
+      grid-column: 2;
+      grid-row: 3;
+    }
+
+    /* ===== DESKTOP: Bersih hanya overlay ===== */
+    @media (min-width: 1024px) {
+      body, html {
+        background: transparent;
+        overflow: hidden;
+        height: 100vh;
+        padding: 5vh 0;
+      }
+
+      .mobile-nav, #settings-panel, #search-panel {
+        display: none !important;
+      }
+    }
+
+    @font-face {
+      font-family: 'LPMQ Isep Misbah';
+      src: url('fonts/LPMQ Isep Misbah/LPMQ Isep Misbah.ttf') format('truetype');
+    }
+
+    @font-face {
+      font-family: 'Amiri';
+      src: url('fonts/Amiri-Regular.ttf') format('truetype');
+    }
+    .mobile-only {
+      display: none !important;
+    }
+
+    @media (max-width: 1023px) {
+      .mobile-only {
+        display: flex !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="search-panel" class="glass-panel">
+    <div class="control-label" style="margin-bottom:10px;">Pencarian Pintar</div>
+    <div class="control-group" style="flex-direction: column; gap: 12px;">
+      <div class="search-box">
+        <input type="text" id="surah-search" placeholder="Ketik nama/nomor surah..." autocomplete="off">
+        <button id="clear-surah" class="clear-btn" onclick="clearInput('surah-search')">&times;</button>
+        <div id="surah-results" class="results-list"></div>
+      </div>
+      <div class="search-box" style="display: flex; gap: 8px;">
+        <div style="flex: 1; position: relative;">
+          <input type="text" id="ayah-search" placeholder="Pilih Ayat..." autocomplete="off">
+          <button id="clear-ayah" class="clear-btn" onclick="clearInput('ayah-search')">&times;</button>
+          <div id="ayah-results" class="results-list"></div>
+        </div>
+        <button onclick="showVerse('selected')" style="flex: 0 0 100px;">Tampilkan</button>
+      </div>
+    </div>
+    
+    <div class="control-group mobile-only" style="margin-top: 12px; gap: 8px;">
+      <button onclick="setBookmark()" style="background: #27ae60; color: white; flex: 1;">📌 Tandai Ayat</button>
+      <button onclick="gotoBookmark()" class="secondary" style="flex: 1;">📍 Ke Tanda</button>
+    </div>
+
+    <div class="control-group mobile-only" style="margin-top: 8px;">
+      <button onclick="showVerse('random')" style="background: #e67e22; color: white; width: 100%;">🎲 Acak Ayat</button>
+    </div>
+
+    <div style="font-size: 10px; color: #aaa; margin-top: 8px; text-align: center;">
+      Tips: Ketik "114:1" di kolom surah untuk lompat cepat.
+    </div>
+  </div>
+
+  <div id="settings-panel" class="glass-panel">
+    <div class="control-header" onclick="toggleSettings()">
+      <span>⚙️</span> Pengaturan <small id="db-status" style="font-size: 10px; opacity: 0.5; margin-left: auto;">Memuat...</small>
+      <div class="minimize-btn" id="minimize-icon">−</div>
+    </div>
+
+    <div class="panel-content">
+
+    <div class="control-section">
+      <div class="control-label">Pengaturan Tampilan</div>
+      <div class="settings-grid">
+        <div class="setting-item">
+          <span>Potong Ayat (<b id="val-words">20</b> kata)</span>
+          <input type="range" id="max-words" min="0" max="50" value="20">
+        </div>
+        <div class="setting-item">
+          <span>Tinggi Baris (<b id="val-height">1.6</b>)</span>
+          <input type="range" id="size-height" min="10" max="30" value="16">
+        </div>
+        <div class="setting-item">
+          <span>Lebar Maksimal (<b id="val-width">85</b>vw)</span>
+          <input type="range" id="size-width" min="40" max="100" value="85">
+        </div>
+        <div class="setting-item">
+          <span>Padding (<b id="val-padding">30</b>px)</span>
+          <input type="range" id="size-padding" min="10" max="100" value="30">
+        </div>
+        <div class="setting-item">
+          <span>Ukuran Ayat (<b id="val-verse">64</b>px)</span>
+          <input type="range" id="size-verse" min="30" max="120" value="64">
+        </div>
+        <div class="setting-item">
+          <span>Ukuran Surah (<b id="val-surah">24</b>px)</span>
+          <input type="range" id="size-surah" min="14" max="48" value="24">
+        </div>
+        <div class="setting-item">
+          <span>Ukuran Terjemah (<b id="val-trans">24</b>px)</span>
+          <input type="range" id="size-trans" min="14" max="48" value="24">
+        </div>
+        <div class="setting-item">
+          <span>Posisi Teks</span>
+          <select id="text-align">
+            <option value="center">Tengah</option>
+            <option value="right">Kanan</option>
+            <option value="left">Kiri</option>
+          </select>
+        </div>
+        <div class="setting-item">
+          <span>Posisi Vertikal</span>
+          <select id="vertical-align">
+            <option value="center">Tengah</option>
+            <option value="flex-start">Atas</option>
+            <option value="flex-end">Bawah</option>
+          </select>
+        </div>
+        <div class="setting-item">
+          <span>Bahasa Terjemah</span>
+          <select id="trans-lang">
+            <option value="id">Indonesia</option>
+          </select>
+        </div>
+        <div class="setting-item">
+          <span>Tampilkan Terjemah</span>
+          <select id="show-trans">
+            <option value="block">Ya</option>
+            <option value="none">Tidak</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+      <div class="control-section">
+        <button class="secondary" onclick="hideOverlay()" style="width:100%; margin-bottom: 8px;">Sembunyikan Overlay</button>
+        <button class="secondary" style="width: 100%; font-size: 12px;"
+          onclick="location.reload()">Refresh Halaman</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mobile-nav">
+    <button class="nav-btn nav-up" onclick="showVerse('prev')" title="Bagian Sebelumnya (Panah Atas)">▲</button>
+    <button class="nav-btn nav-left" onclick="showVerse('prevAyah')" title="Ayat Sebelumnya (Panah Kiri)">◀</button>
+    <div class="nav-center"></div> <!-- Kosongkan tengah D-pad -->
+    <button class="nav-btn nav-right" onclick="showVerse('nextAyah')" title="Ayat Selanjutnya (Panah Kanan)">▶</button>
+    <button class="nav-btn nav-down" onclick="showVerse('next')" title="Bagian Selanjutnya (Panah Bawah)">▼</button>
+  </div>
+
+  <div id="overlay" class="hidden">
+    <div class="surah" id="surah">Al-Fatihah (1):1</div>
+    <div class="verse" id="verse">بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ</div>
+    <div class="translation" id="translation">Dengan nama Allah Yang Maha Pengasih, Maha Penyayang.</div>
+  </div>
+
+  <script>
+    const SURAH_LIST_FILE = 'data/surah_list.json';
+    const QURAN_JSON_PATH = 'quran-json/surah/';
+
+    let surahList = [];
+    let surahCache = {};
+    let currentSurahNo = 1;
+    let currentAyahNo = 1;
+    let currentPartNo = 0;
+    let verseParts = [];
+    let lastSyncTime = 0;
+    let isPolling = false;
+
+    const overlay = document.getElementById('overlay');
+    const elSurah = document.getElementById('surah');
+    const elVerse = document.getElementById('verse');
+    const elTrans = document.getElementById('translation');
+    
+    // New Searchable Inputs
+    const surahSearch = document.getElementById('surah-search');
+    const surahResults = document.getElementById('surah-results');
+    const ayahSearch = document.getElementById('ayah-search');
+    const ayahResults = document.getElementById('ayah-results');
+    
+    // Legacy internal state
+    let selectedSurah = 1;
+    let selectedAyah = 1;
+
+    const settingsPanel = document.getElementById('settings-panel');
+    const minimizeIcon = document.getElementById('minimize-icon');
+
+    // Default Settings
+    let settings = {
+      verseSize: 64,
+      surahSize: 24,
+      transSize: 24,
+      lineHeight: 1.6,
+      overlayWidth: 85,
+      overlayPadding: 30,
+      maxWords: 20,
+      textAlign: 'center',
+      verticalAlign: 'center',
+      transLang: 'id',
+      transDisplay: 'block'
+    };
+
+    // Load from LocalStorage
+    const savedState = localStorage.getItem('tahfidz_state');
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        currentSurahNo = parseInt(parsed.surah) || 1;
+        currentAyahNo = parseInt(parsed.ayah) || 1;
+        currentPartNo = parseInt(parsed.part) || 0;
+        if (parsed.settings) Object.assign(settings, parsed.settings);
+        if (parsed.settingsMinimized) {
+          settingsPanel.classList.add('minimized');
+          minimizeIcon.textContent = '+';
+        }
+        console.log('📦 Loaded state from localStorage', parsed);
+      } catch (e) { console.error('Failed to load state:', e); }
+    }
+
+    function toggleSettings() {
+      const isMinimized = settingsPanel.classList.toggle('minimized');
+      minimizeIcon.textContent = isMinimized ? '+' : '−';
+      saveState();
+    }
+
+    function saveState() {
+      localStorage.setItem('tahfidz_state', JSON.stringify({
+        surah: currentSurahNo,
+        ayah: currentAyahNo,
+        part: currentPartNo,
+        settings,
+        settingsMinimized: settingsPanel.classList.contains('minimized')
+      }));
+    }
+
+    // Load Surah List with Promise (Compatible with older browsers)
+    function initDatabase() {
+      const statusEl = document.getElementById('db-status');
+      console.log('🔄 Initializing database...');
+      statusEl.textContent = 'Memuat DB...';
+      
+      fetch(SURAH_LIST_FILE + '?t=' + Date.now())
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then(data => {
+          if (!Array.isArray(data)) throw new Error('Format Invalid');
+          surahList = data;
+          console.log(`✅ Database siap: ${surahList.length} surah.`);
+          statusEl.textContent = `DB: OK (${surahList.length})`;
+          statusEl.style.color = '#FFD166';
+          
+          statusEl.style.color = '#FFD166';
+          
+          applySettings(settings);
+          
+          // Initial Sync from Server
+          fetch('/sync?initial=1')
+            .then(res => res.json())
+            .then(state => {
+              if (state && state.t > 0) {
+                console.log('🔄 Initial Sync from Server:', state);
+                lastSyncTime = state.t;
+                if (state.settings) applySettings(state.settings);
+                renderVerse(state.s || 1, state.a || 1, state.p || 0);
+                if (state.v) overlay.classList.remove('hidden');
+                else overlay.classList.add('hidden');
+              } else {
+                renderVerse(currentSurahNo, currentAyahNo, currentPartNo);
+              }
+            }).catch(() => {
+              renderVerse(currentSurahNo, currentAyahNo, currentPartNo);
+            });
+        })
+        .catch(e => {
+          console.error('❌ Database Error:', e);
+          statusEl.textContent = 'DB: ERROR';
+          statusEl.style.color = '#ff595e';
+          surahList = [{no: 1, name: "Al-Fatihah"}];
+          populateSurahSelect();
+        });
+    }
+
+    initDatabase();
+
+    function loadSurah(no) {
+      if (surahCache[no]) return Promise.resolve(surahCache[no]);
+      console.log(`🔍 Fetching surah ${no}...`);
+      return fetch(`${QURAN_JSON_PATH}${no}.json`)
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then(data => {
+          surahCache[no] = data[no];
+          if (!surahCache[no]) throw new Error(`Key "${no}" not found`);
+          return surahCache[no];
+        })
+        .catch(e => {
+          console.error(`❌ Gagal load surah ${no}:`, e);
+          document.getElementById('db-status').textContent = `Err: Surah ${no}`;
+          return null;
+        });
+    }
+
+    // Menangani sinkronisasi dengan server
+    // Menerima nilai eksplisit agar tidak terjadi race condition dengan renderVerse async
+    function syncState(visible, sNo, aNo, pNo) {
+      var now = Date.now();
+      lastSyncTime = now;
+      // Gunakan nilai eksplisit jika diberikan, fallback ke global
+      var syncS = (sNo !== undefined) ? parseInt(sNo) : parseInt(currentSurahNo);
+      var syncA = (aNo !== undefined) ? parseInt(aNo) : parseInt(currentAyahNo);
+      var syncP = (pNo !== undefined) ? parseInt(pNo) : parseInt(currentPartNo);
+      const state = {
+        s: syncS,
+        a: syncA,
+        p: syncP,
+        v: visible,
+        settings: settings,
+        t: now
+      };
+      fetch('/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state)
+      }).catch(e => console.warn('Sync POST failed:', e));
+    }
+
+    function applySettings(newSettings) {
+      if (!newSettings) return;
+      settings = newSettings;
+      document.body.style.setProperty('--verse-size', settings.verseSize + 'px');
+      document.body.style.setProperty('--surah-size', settings.surahSize + 'px');
+      document.body.style.setProperty('--trans-size', settings.transSize + 'px');
+      document.body.style.setProperty('--line-height', settings.lineHeight);
+      document.body.style.setProperty('--overlay-width', settings.overlayWidth + 'vw');
+      document.body.style.setProperty('--overlay-padding', settings.overlayPadding + 'px ' + (settings.overlayPadding * 1.6) + 'px');
+      document.body.style.setProperty('--text-align', settings.textAlign);
+      document.body.style.setProperty('--vertical-align', settings.verticalAlign);
+      document.body.style.setProperty('--trans-display', settings.transDisplay);
+
+      // Update UI controls
+      if (document.getElementById('size-verse')) document.getElementById('size-verse').value = settings.verseSize || 64;
+      if (document.getElementById('size-surah')) document.getElementById('size-surah').value = settings.surahSize || 24;
+      if (document.getElementById('size-trans')) document.getElementById('size-trans').value = settings.transSize || 24;
+      if (document.getElementById('size-height')) document.getElementById('size-height').value = (settings.lineHeight || 1.6) * 10;
+      if (document.getElementById('size-width')) document.getElementById('size-width').value = settings.overlayWidth || 85;
+      if (document.getElementById('size-padding')) document.getElementById('size-padding').value = settings.overlayPadding || 30;
+      if (document.getElementById('max-words')) document.getElementById('max-words').value = settings.maxWords || 20;
+
+      // Update value displays
+      if (document.getElementById('val-verse')) document.getElementById('val-verse').textContent = settings.verseSize || 64;
+      if (document.getElementById('val-surah')) document.getElementById('val-surah').textContent = settings.surahSize || 24;
+      if (document.getElementById('val-trans')) document.getElementById('val-trans').textContent = settings.transSize || 24;
+      if (document.getElementById('val-height')) document.getElementById('val-height').textContent = settings.lineHeight || 1.6;
+      if (document.getElementById('val-width')) document.getElementById('val-width').textContent = settings.overlayWidth || 85;
+      if (document.getElementById('val-padding')) document.getElementById('val-padding').textContent = settings.overlayPadding || 30;
+      if (document.getElementById('val-words')) document.getElementById('val-words').textContent = settings.maxWords || 0;
+
+      if (document.getElementById('text-align')) document.getElementById('text-align').value = settings.textAlign || 'center';
+      if (document.getElementById('vertical-align')) document.getElementById('vertical-align').value = settings.verticalAlign || 'center';
+      if (document.getElementById('trans-lang')) document.getElementById('trans-lang').value = settings.transLang || 'id';
+      if (document.getElementById('show-trans')) document.getElementById('show-trans').value = settings.transDisplay || 'block';
+    }
+
+    // Listeners for Settings
+    ['size-verse', 'size-surah', 'size-trans', 'size-height', 'size-width', 'size-padding', 'max-words'].forEach(id => {
+      document.getElementById(id).addEventListener('input', (e) => {
+        let key;
+        if (id === 'size-verse') key = 'verseSize';
+        else if (id === 'size-surah') key = 'surahSize';
+        else if (id === 'size-trans') key = 'transSize';
+        else if (id === 'size-height') key = 'lineHeight';
+        else if (id === 'size-width') key = 'overlayWidth';
+        else if (id === 'size-padding') key = 'overlayPadding';
+        else if (id === 'max-words') key = 'maxWords';
+
+        const val = id === 'size-height' ? e.target.value / 10 : e.target.value;
+        settings[key] = val;
+        applySettings(settings);
+        saveState();
+        renderVerse(currentSurahNo, currentAyahNo, currentPartNo);
+        syncState(!overlay.classList.contains('hidden'));
+      });
+    });
+
+    ['text-align', 'vertical-align', 'trans-lang', 'show-trans'].forEach(id => {
+      document.getElementById(id).addEventListener('change', (e) => {
+        const key = id.replace('-', 'Size').replace('text-align', 'textAlign').replace('vertical-align', 'verticalAlign').replace('trans-lang', 'transLang').replace('show-trans', 'transDisplay');
+        // Fix key mapping for multi-word settings
+        let actualKey = id.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+        if (id === 'show-trans') actualKey = 'transDisplay';
+
+        settings[actualKey] = e.target.value;
+        applySettings(settings);
+        saveState();
+        syncState(!overlay.classList.contains('hidden'));
+      });
+    });
+
+    // Render data to screen
+    function renderVerse(sNo, aNo, pNo) {
+      loadSurah(sNo).then(sData => {
+        if (!sData) return;
+        currentSurahNo = sNo;
+        currentAyahNo = aNo;
+        currentPartNo = pNo;
+
+        const fullText = sData.text[aNo];
+        const fullTrans = sData.translations[settings.transLang]?.text[aNo] || "";
+        
+        // Splitting logic
+        const words = fullText.split(' ');
+        const transWords = fullTrans.split(' ');
+        
+        const maxWords = parseInt(settings.maxWords);
+        if (maxWords > 0 && words.length > maxWords) {
+          verseParts = [];
+          const numParts = Math.ceil(words.length / maxWords);
+          
+          for (let i = 0; i < numParts; i++) {
+            verseParts.push({
+              text: words.slice(i * maxWords, (i + 1) * maxWords).join(' '),
+              trans: transWords.slice(i * maxWords, (i + 1) * maxWords).join(' ')
+            });
+          }
+        } else {
+          verseParts = [{ text: fullText, trans: fullTrans }];
+        }
+
+        if (currentPartNo >= verseParts.length) currentPartNo = 0;
+        const currentPart = verseParts[currentPartNo] || verseParts[0];
+        
+        // Bagian 1: Nama Surah (No):Ayat
+        let headerText = `${sData.name_latin} (${sNo}):${aNo}`;
+        if (verseParts.length > 1) {
+          headerText += ` [${currentPartNo + 1}/${verseParts.length}]`;
+        }
+        elSurah.textContent = headerText;
+
+        // Bagian 2: Ayat
+        elVerse.textContent = currentPart.text;
+        
+        // Bagian 3: Terjemahan
+        elTrans.textContent = currentPart.trans;
+
+        // Update UI only if not currently typing
+        if (document.activeElement !== surahSearch) {
+          surahSearch.value = sData.name_latin;
+        }
+        if (document.activeElement !== ayahSearch) {
+          ayahSearch.value = aNo;
+        }
+        updateAyahList(sNo);
+        
+        currentSurahNo = parseInt(sNo);
+        currentAyahNo = parseInt(aNo);
+        currentPartNo = parseInt(pNo);
+        saveState();
+      });
+    }
+
+    function updateAyahList(sNo) {
+      ayahResults.innerHTML = '';
+      loadSurah(sNo).then(sData => {
+        if (sData) {
+          const count = parseInt(sData.number_of_ayah);
+          for (let i = 1; i <= count; i++) {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+            div.textContent = `Ayat ${i}`;
+            div.onclick = () => {
+              ayahSearch.value = i;
+              selectedAyah = i;
+              ayahResults.style.display = 'none';
+              showVerse('selected');
+            };
+            ayahResults.appendChild(div);
+          }
+        }
+      });
+    }
+
+    // Smart Search Surah
+    surahSearch.addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase().trim();
+      
+      if (!val) {
+        surahResults.style.display = 'none';
+        return;
+      }
+
+      // Format s:a (e.g., 114:1)
+      if (val.includes(':')) {
+        const [sPart, aPart] = val.split(':');
+        const sNo = parseInt(sPart);
+        const aNo = parseInt(aPart);
+        if (!isNaN(sNo) && sNo >= 1 && sNo <= 114) {
+          loadSurah(sNo).then(sData => {
+            if (sData && !isNaN(aNo) && aNo >= 1 && aNo <= parseInt(sData.number_of_ayah)) {
+              renderVerse(sNo, aNo, 0);
+              syncState(true, sNo, aNo, 0);
+              overlay.classList.remove('hidden');
+              surahResults.style.display = 'none';
+            }
+          });
+        }
+        return;
+      }
+
+      const matches = surahList.filter(s =>
+        s.name.toLowerCase().includes(val) ||
+        (s.name_latin && s.name_latin.toLowerCase().includes(val)) ||
+        s.no.toString() === val
+      ).slice(0, 15);
+
+      if (matches.length > 0) {
+        surahResults.innerHTML = '';
+        matches.forEach(s => {
+          const div = document.createElement('div');
+          div.className = 'result-item';
+          div.innerHTML = `<span style="color:#FFD166; font-weight:bold;">${s.no}.</span> ${s.name_latin || s.name}`;
+          div.onclick = (e) => {
+            e.stopPropagation();
+            surahSearch.value = s.name_latin || s.name;
+            selectedSurah = s.no;
+            selectedAyah = 1;
+            surahResults.style.display = 'none';
+            updateAyahList(s.no);
+            ayahSearch.value = "1";
+            showVerse('selected');
+          };
+          surahResults.appendChild(div);
+        });
+        surahResults.style.display = 'block';
+      } else {
+        surahResults.style.display = 'none';
+      }
+    });
+
+    surahSearch.addEventListener('focus', () => {
+      if (surahSearch.value === '') {
+        // Show top 10 surahs if empty
+        const matches = surahList.slice(0, 10);
+        surahResults.innerHTML = '';
+        matches.forEach(s => {
+          const div = document.createElement('div');
+          div.className = 'result-item';
+          div.innerHTML = `<span style="color:#FFD166; font-weight:bold;">${s.no}.</span> ${s.name_latin || s.name}`;
+          div.onclick = (e) => {
+            e.stopPropagation();
+            surahSearch.value = s.name_latin || s.name;
+            selectedSurah = s.no;
+            selectedAyah = 1;
+            surahResults.style.display = 'none';
+            updateAyahList(s.no);
+            ayahSearch.value = "1";
+            showVerse('selected');
+          };
+          surahResults.appendChild(div);
+        });
+        surahResults.style.display = 'block';
+      } else if (surahResults.children.length > 0) {
+        surahResults.style.display = 'block';
+      }
+    });
+
+    // Smart Search Ayah
+    ayahSearch.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      
+      ayahResults.style.display = 'block';
+      const items = ayahResults.querySelectorAll('.result-item');
+      let found = 0;
+      items.forEach(item => {
+        if (!val || item.textContent.toLowerCase().includes(val.toLowerCase())) {
+          item.style.display = 'block';
+          found++;
+        } else {
+          item.style.display = 'none';
+        }
+      });
+      if (found === 0) ayahResults.style.display = 'none';
+    });
+
+    ayahSearch.addEventListener('focus', () => {
+      if (ayahResults.children.length > 0) {
+        ayahResults.style.display = 'block';
+        // Show all items on focus
+        const items = ayahResults.querySelectorAll('.result-item');
+        items.forEach(item => item.style.display = 'block');
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!surahSearch.contains(e.target) && !surahResults.contains(e.target)) {
+        surahResults.style.display = 'none';
+      }
+      if (!ayahSearch.contains(e.target) && !ayahResults.contains(e.target)) {
+        ayahResults.style.display = 'none';
+      }
+    });
+
+    function showVerse(action) {
+      let nextS = parseInt(currentSurahNo);
+      let nextA = parseInt(currentAyahNo);
+      let nextP = parseInt(currentPartNo);
+
+      if (action === 'next') {
+        if (nextP < verseParts.length - 1) {
+          nextP = nextP + 1;
+        } else {
+          action = 'nextAyah';
+        }
+      }
+
+      if (action === 'nextAyah') {
+        loadSurah(nextS).then(sData => {
+          if (nextA < parseInt(sData.number_of_ayah)) {
+            nextA++;
+          } else {
+            nextS = (nextS % 114) + 1;
+            nextA = 1;
+          }
+          nextP = 0;
+          renderVerse(nextS, nextA, nextP);
+          overlay.classList.remove('hidden');
+          syncState(true, nextS, nextA, nextP);
+        });
+        return; // handle async inside
+      }
+
+      if (action === 'prev') {
+        if (currentPartNo > 0) {
+          nextP = currentPartNo - 1;
+        } else {
+          action = 'prevAyah';
+        }
+      }
+
+      if (action === 'prevAyah') {
+        if (nextA > 1) {
+          nextA--;
+        } else {
+          nextS = nextS > 1 ? nextS - 1 : 114;
+          loadSurah(nextS).then(sData => {
+            var lastAyah = parseInt(sData.number_of_ayah);
+            renderVerse(nextS, lastAyah, 0);
+            overlay.classList.remove('hidden');
+            syncState(true, nextS, lastAyah, 0);
+          });
+          return;
+        }
+        nextP = 0;
+      } else if (action === 'selected') {
+        nextS = parseInt(selectedSurah);
+        nextA = parseInt(selectedAyah);
+      }
+
+      if (action === 'random') {
+        nextS = Math.floor(Math.random() * 114) + 1;
+
+        loadSurah(nextS).then(sData => {
+          if (sData) {
+            nextA = Math.floor(Math.random() * parseInt(sData.number_of_ayah)) + 1;
+            nextP = 0;
+            renderVerse(nextS, nextA, nextP);
+            overlay.classList.remove('hidden');
+            syncState(true, nextS, nextA, nextP);
+          }
+        });
+        return;
+      }
+
+      renderVerse(nextS, nextA, nextP);
+      syncState(true, nextS, nextA, nextP);
+      overlay.classList.remove('hidden');
+    }
+
+    function hideOverlay() {
+      overlay.classList.add('hidden');
+      syncState(false);
+    }
+
+    // Bookmark Functions
+    function setBookmark() {
+      const b = { s: currentSurahNo, a: currentAyahNo };
+      localStorage.setItem('tahfidz_bookmark', JSON.stringify(b));
+      // Subtle toast-like feedback could be better, but alert is consistent with old-browser compatibility
+      alert(`📌 Berhasil Ditandai: Surah ${currentSurahNo} Ayat ${currentAyahNo}`);
+    }
+
+    function gotoBookmark() {
+      const bStr = localStorage.getItem('tahfidz_bookmark');
+      if (!bStr) {
+        alert("Belum ada ayat yang ditandai.");
+        return;
+      }
+      const b = JSON.parse(bStr);
+      renderVerse(b.s, b.a, 0);
+      syncState(true, b.s, b.a, 0);
+      overlay.classList.remove('hidden');
+    }
+
+    function clearInput(id) {
+      const input = document.getElementById(id);
+      input.value = '';
+      input.focus();
+      if (id === 'surah-search') {
+        surahResults.style.display = 'none';
+      } else {
+        ayahResults.style.display = 'none';
+      }
+    }
+
+    // Polling sync (Ditingkatkan kecepatannya)
+    setInterval(function() {
+      if (isPolling) return;
+      isPolling = true;
+      fetch('/sync?_t=' + Date.now())
+        .then(function(res) {
+          if (!res.ok) throw new Error('sync fail');
+          return res.json();
+        })
+        .then(function(state) {
+          // Jika ada data baru dari perangkat lain
+          if (state && state.t > lastSyncTime) {
+            console.log('📥 Sync Update Received:', state.s, state.a);
+            lastSyncTime = state.t;
+
+            if (state.settings) {
+              applySettings(state.settings);
+            }
+
+            var sNo = parseInt(state.s);
+            var aNo = parseInt(state.a);
+            var pNo = parseInt(state.p || 0);
+
+            if (!isNaN(sNo) && !isNaN(aNo)) {
+              currentSurahNo = sNo;
+              currentAyahNo = aNo;
+              currentPartNo = pNo;
+              
+              renderVerse(sNo, aNo, pNo);
+              if (state.v) {
+                overlay.classList.remove('hidden');
+              } else {
+                overlay.classList.add('hidden');
+              }
+            }
+          }
+        })
+        .catch(function() {})
+        .then(function() {
+          isPolling = false;
+        });
+    }, 500); // Polling setiap 0.5 detik
+
+    document.addEventListener('keydown', (e) => {
+      // Izinkan shortcut jika yang fokus adalah slider (range)
+      if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+
+      if (e.code === 'Space') { e.preventDefault(); showVerse('random'); }
+      if (e.code === 'ArrowRight') { e.preventDefault(); showVerse('nextAyah'); }
+      if (e.code === 'ArrowLeft') { e.preventDefault(); showVerse('prevAyah'); }
+      if (e.code === 'ArrowDown') { e.preventDefault(); showVerse('next'); }
+      if (e.code === 'ArrowUp') { e.preventDefault(); showVerse('prev'); }
+      if (e.code === 'Escape') { e.preventDefault(); hideOverlay(); }
+    });
+
+    overlay.addEventListener('click', () => showVerse('next'));
+
+    // Mobile Nav click prevention
+    var mobileNav = document.querySelector('.mobile-nav');
+    mobileNav.addEventListener('mousedown', (e) => e.stopPropagation());
+    mobileNav.addEventListener('touchstart', (e) => e.stopPropagation());
+  </script>
+</body>
+
+</html>
