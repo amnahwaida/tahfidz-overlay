@@ -7,14 +7,13 @@ import threading
 import os
 
 PORT = 8000
+STATE_FILE = "data/last_state.json"
 
 class ThreadingSimpleServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     allow_reuse_address = True
 
-class SyncHandler(http.server.SimpleHTTPRequestHandler):
-    # Global state untuk sinkronisasi antar browser
-    # State awal aplikasi
-    shared_state = {
+def load_initial_state():
+    default_state = {
         "s": 1, 
         "a": 1, 
         "p": 0, 
@@ -33,10 +32,41 @@ class SyncHandler(http.server.SimpleHTTPRequestHandler):
             "verticalAlign": "center",
             "transLang": "id",
             "transDisplay": "block",
-            "highlightColor": "#FFD166"
+            "highlightColor": "#FFD166",
+            "wrongColor": "#ff595e",
+            "verseColor": "#ffffff",
+            "surahColor": "#ffffff",
+            "transColor": "#ffffff"
         },
         "t": 1
     }
+    
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, 'r', encoding='utf-8') as f:
+                saved_state = json.load(f)
+                # Pastikan t diperbarui agar client memuat ulang
+                import time
+                saved_state['t'] = int(time.time() * 1000)
+                default_state.update(saved_state)
+                print("💾 Berhasil memuat state sebelumnya.")
+        except Exception as e:
+            print(f"⚠️ Gagal memuat state sebelumnya: {e}")
+            
+    return default_state
+
+def save_state(state):
+    try:
+        # Buat folder data jika belum ada
+        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+        with open(STATE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(state, f)
+    except Exception as e:
+        print(f"⚠️ Gagal menyimpan state: {e}")
+
+class SyncHandler(http.server.SimpleHTTPRequestHandler):
+    # Global state untuk sinkronisasi antar browser
+    shared_state = load_initial_state()
 
     def do_POST(self):
         if self.path.startswith('/sync'):
@@ -45,6 +75,14 @@ class SyncHandler(http.server.SimpleHTTPRequestHandler):
             new_state = json.loads(post_data.decode('utf-8'))
             SyncHandler.shared_state.update(new_state)
             
+            # Simpan ke file
+            save_state(SyncHandler.shared_state)
+            
+            # Log sederhana
+            s = new_state.get('s','?')
+            a = new_state.get('a','?')
+            print(f"📡 Sync: Surah {s} Ayah {a}")
+
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')

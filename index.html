@@ -6,6 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Overlay View - Tahfidz Overlay</title>
   <style>
+    :root {
+      --verse-size: 64px;
+      --surah-size: 24px;
+      --trans-size: 24px;
+      --line-height: 1.6;
+      --overlay-width: 85%;
+      --overlay-padding: 30px;
+      --highlight-color: #FFD166;
+      --verse-color: #ffffff;
+      --surah-color: #ffffff;
+      --trans-color: #ffffff;
+      --trans-display: block;
+      --text-align: center;
+      --vertical-align: center;
+    }
+
     @font-face {
       font-family: 'LPMQ Isep Misbah';
       src: url('fonts/LPMQ Isep Misbah/LPMQ Isep Misbah.ttf') format('truetype');
@@ -32,16 +48,15 @@
 
     #overlay {
       direction: rtl;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.85); /* Ditingkatkan dari 0.7 dan tanpa blur agar teks tidak pudar di OBS */
       padding: var(--overlay-padding, 30px 50px);
       border-radius: 20px;
       text-align: var(--text-align, center);
       max-width: var(--overlay-width, 85vw);
       max-height: 85vh;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
       transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -57,13 +72,13 @@
 
     .surah {
       font-size: var(--surah-size, 24px);
-      color: #FFD166;
+      color: var(--surah-color, #FFD166);
       margin-bottom: 15px;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: 1px;
       text-transform: uppercase;
-      opacity: 0.9;
-      border-bottom: 1px solid rgba(255, 209, 102, 0.2);
+      opacity: 1;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       padding-bottom: 10px;
       direction: ltr;
     }
@@ -76,33 +91,61 @@
       margin: 20px 0;
     }
 
+    .verse span {
+      display: inline-block;
+      padding: 0;
+      margin: 0;
+      position: relative;
+      font-weight: 500;
+      
+      /* Gradient untuk isi teks: [VerseColor | Highlight] */
+      background-size: 200% 100%;
+      background-image: linear-gradient(90deg, var(--verse-color) 50%, var(--highlight-color) 50%);
+      background-position: 0 0;
+      
+      /* Clip background ke teks */
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      
+      transition: background-position 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+      will-change: background-position;
+    }
+
     .verse span.reading {
-      color: var(--highlight-color, #FFD166);
-      transition: all 0.3s ease;
+      background-position: 100% 0;
+    }
+
+    .verse span.waqf-sign {
+      background: none !important;
+      -webkit-text-fill-color: var(--verse-color);
+      opacity: 0.3;
+      padding: 0 4px;
     }
 
     .verse span.reading.wrong {
-      color: #ff595e;
-      animation: blink-red 0.6s step-end infinite;
-    }
-
-    @keyframes blink-red {
-      0%, 100% { color: #ff595e; }
-      50% { color: #fff; }
+      background-image: linear-gradient(90deg, var(--verse-color) 50%, #ff595e 50%);
     }
 
 
     .translation {
       font-size: var(--trans-size, 24px);
-      color: #FFD166;
+      color: var(--trans-color, #ffffff);
       font-style: italic;
       margin-top: 15px;
       font-family: 'Inter', sans-serif;
       line-height: 1.4;
       display: var(--trans-display, block);
-      border-top: 1px solid rgba(255, 209, 102, 0.2);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
       padding-top: 15px;
       direction: ltr;
+      opacity: 1;
+    }
+
+    @keyframes blink-wrong {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
     }
   </style>
 </head>
@@ -165,21 +208,66 @@
     function applySettings(newSettings) {
       if (!newSettings) return;
       settings = newSettings;
-      document.body.style.setProperty('--verse-size', settings.verseSize + 'px');
-      document.body.style.setProperty('--surah-size', settings.surahSize + 'px');
-      document.body.style.setProperty('--trans-size', settings.transSize + 'px');
-      document.body.style.setProperty('--line-height', settings.lineHeight);
-      document.body.style.setProperty('--overlay-width', settings.overlayWidth + 'vw');
-      document.body.style.setProperty('--overlay-padding', settings.overlayPadding + 'px ' + (settings.overlayPadding * 1.6) + 'px');
-      document.body.style.setProperty('--text-align', settings.textAlign);
-      document.body.style.setProperty('--vertical-align', settings.verticalAlign);
-      document.body.style.setProperty('--trans-display', settings.transDisplay);
-      document.body.style.setProperty('--highlight-color', settings.highlightColor || '#FFD166');
+      
+      const root = document.documentElement;
+      // Update ukuran & tata letak tetap pakai root
+      root.style.setProperty('--verse-size', (settings.verseSize || 64) + 'px');
+      root.style.setProperty('--surah-size', (settings.surahSize || 24) + 'px');
+      root.style.setProperty('--trans-size', (settings.transSize || 24) + 'px');
+      root.style.setProperty('--line-height', settings.lineHeight || 1.6);
+      root.style.setProperty('--overlay-width', (settings.overlayWidth || 85) + 'vw');
+      root.style.setProperty('--trans-display', settings.transDisplay || 'block');
+      root.style.setProperty('--text-align', settings.textAlign || 'center');
+      root.style.setProperty('--vertical-align', settings.verticalAlign || 'center');
+
+      // PAKSA WARNA menggunakan Style Tag Dinamis (Nuclear Option)
+      let dynamicStyle = document.getElementById('dynamic-colors');
+      if (!dynamicStyle) {
+        dynamicStyle = document.createElement('style');
+        dynamicStyle.id = 'dynamic-colors';
+        document.head.appendChild(dynamicStyle);
+      }
+
+      const vColor = settings.verseColor || '#ffffff';
+      const sColor = settings.surahColor || '#ffffff';
+      const tColor = settings.transColor || '#ffffff';
+      const hColor = settings.highlightColor || '#FFD166';
+      const wColor = settings.wrongColor || '#ff595e';
+
+      dynamicStyle.innerHTML = `
+        .surah { color: ${sColor} !important; text-shadow: 0 1px 3px rgba(0,0,0,0.8) !important; }
+        .translation { color: ${tColor} !important; border-top-color: ${tColor}33 !important; text-shadow: 0 1px 3px rgba(0,0,0,0.8) !important; }
+        .verse span { 
+          --verse-color: ${vColor};
+          --highlight-color: ${hColor};
+          background-image: linear-gradient(90deg, ${vColor} 50%, ${hColor} 50%) !important;
+          -webkit-background-clip: text !important;
+          background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+        }
+        .verse span.reading.wrong {
+          background-image: linear-gradient(90deg, ${vColor} 50%, ${wColor} 50%) !important;
+          animation: blink-wrong 1s infinite cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .verse span.waqf-sign { -webkit-text-fill-color: ${vColor} !important; opacity: 0.3 !important; }
+      `;
+      
+      const padding = settings.overlayPadding || 30;
+      if (overlay) {
+        overlay.style.padding = padding + 'px ' + (padding * 1.6) + 'px';
+      }
     }
 
+    window.onload = init;
+
+    let lastVerseKey = "";
+
+    let lastActiveWordIndex = -1;
+
     function renderVerse(sNo, aNo, pNo, wIndex, status) {
-      currentWordIndex = (wIndex !== undefined) ? wIndex : -1;
+      const activeWordIndex = parseInt(wIndex !== undefined ? wIndex : -1);
       const readingStatus = status || 'correct';
+      
       loadSurah(sNo).then(sData => {
         if (!sData) return;
         
@@ -193,92 +281,145 @@
         let verseParts = [];
         const waqfSigns = /[ۖۗۘۙۚۛ]/g;
 
+        let rawTexts = [];
         if (maxWords === 0 && waqfSigns.test(fullText)) {
-          // Smart Grouped Waqf Split
           const rawSegments = fullText.split(/(?<=[ۖۗۘۙۚۛ])/g);
-          const threshold = 18; // Maksimal kata per tampilan jika smart waqf aktif
+          const threshold = 18; 
           let currentPartText = "";
-
           rawSegments.forEach(segment => {
             const segmentWords = segment.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w));
             const currentWords = currentPartText.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w));
-            
             if (currentPartText === "") {
               currentPartText = segment;
             } else if (currentWords.length + segmentWords.length <= threshold) {
               currentPartText += " " + segment;
             } else {
-              verseParts.push({ text: currentPartText.trim(), trans: fullTrans });
+              rawTexts.push(currentPartText.trim());
               currentPartText = segment;
             }
           });
-          if (currentPartText.trim()) {
-            verseParts.push({ text: currentPartText.trim(), trans: fullTrans });
-          }
+          if (currentPartText.trim()) rawTexts.push(currentPartText.trim());
         } else if (maxWords > 0 && words.length > maxWords) {
-          const numParts = Math.ceil(words.length / maxWords);
-          for (let i = 0; i < numParts; i++) {
-            verseParts.push({
-              text: words.slice(i * maxWords, (i + 1) * maxWords).join(' '),
-              trans: transWords.slice(i * maxWords, (i + 1) * maxWords).join(' ')
-            });
+          for (let i = 0; i < words.length; i += maxWords) {
+            rawTexts.push(words.slice(i, i + maxWords).join(' '));
           }
         } else {
-          verseParts = [{ text: fullText, trans: fullTrans }];
+          rawTexts = [fullText];
         }
 
-        const currentPart = verseParts[pNo] || verseParts[0];
-        
-        // Menghitung startIdx global untuk bagian ini
-        let startIdx = 0;
-        for (let i = 0; i < pNo; i++) {
-          startIdx += verseParts[i].text.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w)).length;
-        }
-
-        let headerText = `${sData.name_latin} (${sNo}):${aNo}`;
-        if (verseParts.length > 1) {
-          headerText += ` [${parseInt(pNo) + 1}/${verseParts.length}]`;
-        }
-        elSurah.textContent = headerText;
-        
-        // Bagian 2: Ayat dengan Highlight
-        elVerse.innerHTML = '';
-        currentWordIndex = parseInt(wIndex !== undefined ? wIndex : -1);
-        const readingStatus = status || 'correct';
-        
-        let currentWordCounter = 0;
-        currentPart.text.trim().split(/\s+/).filter(w => w.length > 0).forEach((word) => {
-          const isStandaloneWaqf = /^[ۖۗۘۙۚۛ]$/.test(word);
-          const span = document.createElement('span');
-          span.textContent = word + ' ';
-          
-          if (!isStandaloneWaqf) {
-            const globalIdx = startIdx + currentWordCounter;
-            if (globalIdx <= currentWordIndex) {
-              span.classList.add('reading');
-              if (globalIdx == currentWordIndex && readingStatus === 'wrong') {
-                span.classList.add('wrong');
-              }
-            }
-            currentWordCounter++;
+        let cumulativeArabicWords = 0;
+        let cumulativeTransWords = 0;
+        rawTexts.forEach((txt, idx) => {
+          const partArabicWords = txt.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w)).length;
+          cumulativeArabicWords += partArabicWords;
+          let partTrans = "";
+          if (idx === rawTexts.length - 1) {
+            partTrans = transWords.slice(cumulativeTransWords).join(' ');
+          } else {
+            const ratio = words.length > 0 ? cumulativeArabicWords / words.length : 1;
+            const targetTransWords = Math.round(transWords.length * ratio);
+            partTrans = transWords.slice(cumulativeTransWords, targetTransWords).join(' ');
+            cumulativeTransWords = targetTransWords;
           }
-          elVerse.appendChild(span);
+          verseParts.push({ text: txt, trans: partTrans });
         });
 
-        elTrans.textContent = currentPart.trans;
+        const currentPart = verseParts[pNo] || verseParts[0];
+        const verseKey = `${sNo}-${aNo}-${pNo}`;
+        
+        if (lastVerseKey !== verseKey) {
+          elVerse.innerHTML = '';
+          let startIdx = 0;
+          for (let i = 0; i < pNo; i++) {
+            startIdx += verseParts[i].text.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w)).length;
+          }
+
+          let currentWordCounter = 0;
+          let lastWordIdx_local = -1;
+
+          currentPart.text.trim().split(/\s+/).filter(w => w.length > 0).forEach((word) => {
+            const isStandaloneWaqf = /^[ۖۗۘۙۚۛ]$/.test(word);
+            const span = document.createElement('span');
+            span.textContent = word + ' '; // Space inside span for continuous highlight
+            
+            let gIdx = -1;
+            if (!isStandaloneWaqf) {
+              gIdx = startIdx + currentWordCounter;
+              span.dataset.idx = gIdx;
+              lastWordIdx_local = gIdx;
+              currentWordCounter++;
+            } else {
+              span.classList.add('waqf-sign');
+              if (lastWordIdx_local !== -1) {
+                gIdx = lastWordIdx_local;
+                span.dataset.idx = gIdx;
+              }
+            }
+
+            if (gIdx !== -1 && gIdx < activeWordIndex) {
+              span.style.transition = 'none';
+              span.classList.add('reading');
+            }
+
+            elVerse.appendChild(span);
+          });
+
+          setTimeout(() => {
+            elVerse.querySelectorAll('span').forEach(s => s.style.transition = '');
+          }, 50);
+
+          elTrans.textContent = currentPart.trans;
+          let headerText = `${sData.name_latin} (${sNo}):${aNo}`;
+          if (verseParts.length > 1) headerText += ` [${parseInt(pNo) + 1}/${verseParts.length}]`;
+          elSurah.textContent = headerText;
+          
+          lastVerseKey = verseKey;
+        }
+
+        // Update highlight status dengan stagger
+        const spans = elVerse.querySelectorAll('span[data-idx]');
+        spans.forEach(span => {
+          const globalIdx = parseInt(span.dataset.idx);
+          if (globalIdx <= activeWordIndex) {
+            // Jika kata ini baru saja di-highlight
+            if (!span.classList.contains('reading') && globalIdx > lastActiveWordIndex) {
+               const delay = (globalIdx - lastActiveWordIndex) * 0.08; // Lebih cepat untuk efek gelombang cair
+               span.style.transitionDelay = `${delay}s`;
+            } else if (globalIdx <= lastActiveWordIndex) {
+               span.style.transitionDelay = '0s';
+            }
+            
+            span.classList.add('reading');
+            if (globalIdx == activeWordIndex && readingStatus === 'wrong') {
+              span.classList.add('wrong');
+            } else {
+              span.classList.remove('wrong');
+            }
+          } else {
+            span.style.transitionDelay = '0s';
+            span.classList.remove('reading', 'wrong');
+          }
+        });
+
+        lastActiveWordIndex = activeWordIndex;
       });
     }
 
     function pollSync() {
       if (isPolling) return;
       isPolling = true;
+      
+      const debugEl = document.getElementById('debug-info');
+      
       fetch('/sync?_t=' + Date.now())
         .then(res => res.json())
         .then(state => {
           if (state && state.t > lastSyncTime) {
             lastSyncTime = state.t;
+
             applySettings(state.settings);
             renderVerse(state.s, state.a, state.p, state.wi, state.st);
+            
             if (state.v) overlay.classList.remove('hidden');
             else overlay.classList.add('hidden');
           }
@@ -287,6 +428,16 @@
           isPolling = false;
           setTimeout(pollSync, 300);
         });
+    }
+
+    // Deteksi jika dibuka di Chrome biasa (Bukan OBS)
+    // OBS akan menyuntikkan objek 'obsstudio' ke dalam window
+    if (!window.obsstudio) {
+      document.body.style.background = '#1a1a1a';
+      document.body.style.backgroundImage = 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)';
+      document.body.style.backgroundSize = '20px 20px';
+      document.body.style.backgroundPosition = '0 0, 0 10px, 10px -10px, -10px 0px';
+      console.log("Menjalankan di Browser (Bukan OBS) - Menerapkan latar belakang gelap untuk testing.");
     }
 
     init();

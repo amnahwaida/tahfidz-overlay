@@ -419,28 +419,44 @@
           <div class="control-label" style="margin-bottom: 15px;">⚙️ PENGATURAN TAMPILAN</div>
           <div class="settings-grid">
             <div class="setting-item">
-              <span>Ukuran Ayat</span>
+              <span>Ukuran Ayat (<span id="val-verse">64</span>)</span>
               <input type="range" id="size-verse" min="20" max="150" value="64">
             </div>
             <div class="setting-item">
-              <span>Ukuran Surah</span>
+              <span>Ukuran Surah (<span id="val-surah">24</span>)</span>
               <input type="range" id="size-surah" min="10" max="80" value="24">
             </div>
             <div class="setting-item">
-              <span>Ukuran Terjemah</span>
+              <span>Ukuran Terjemah (<span id="val-trans">24</span>)</span>
               <input type="range" id="size-trans" min="10" max="80" value="24">
             </div>
             <div class="setting-item">
-              <span>Lebar Overlay (%)</span>
+              <span>Lebar Overlay (<span id="val-width">85</span>%)</span>
               <input type="range" id="overlay-width" min="50" max="100" value="85">
             </div>
             <div class="setting-item">
-              <span>Potong Ayat</span>
+              <span>Potong Ayat (<span id="val-words">0</span>)</span>
               <input type="range" id="max-words" min="0" max="50" value="0">
             </div>
             <div class="setting-item">
               <span>Warna Highlight</span>
               <input type="color" id="highlight-color" value="#FFD166" style="width: 60px; height: 35px; padding: 2px;">
+            </div>
+            <div class="setting-item">
+              <span>Warna Salah</span>
+              <input type="color" id="wrong-color" value="#ff595e" style="width: 60px; height: 35px; padding: 2px;">
+            </div>
+            <div class="setting-item">
+              <span>Warna Ayat</span>
+              <input type="color" id="verse-color" value="#ffffff" style="width: 60px; height: 35px; padding: 2px;">
+            </div>
+            <div class="setting-item">
+              <span>Warna Surah</span>
+              <input type="color" id="surah-color" value="#ffffff" style="width: 60px; height: 35px; padding: 2px;">
+            </div>
+            <div class="setting-item">
+              <span>Warna Terjemah</span>
+              <input type="color" id="trans-color" value="#ffffff" style="width: 60px; height: 35px; padding: 2px;">
             </div>
             <div class="setting-item">
               <span>Tampilkan Terjemah</span>
@@ -548,19 +564,20 @@
         });
     }
 
-    function syncState(visible, sNo, aNo, pNo) {
+    function syncState(visible, sNo, aNo, pNo, wi) {
       var now = Date.now();
       lastSyncTime = now;
       var syncS = (sNo !== undefined) ? parseInt(sNo) : parseInt(currentSurahNo);
       var syncA = (aNo !== undefined) ? parseInt(aNo) : parseInt(currentAyahNo);
       var syncP = (pNo !== undefined) ? parseInt(pNo) : parseInt(currentPartNo);
+      var syncWi = (wi !== undefined) ? parseInt(wi) : currentWordIndex;
       
       const state = {
         s: syncS,
         a: syncA,
         p: syncP,
         v: visible,
-        wi: currentWordIndex,
+        wi: syncWi,
         st: readingStatus,
         settings: settings,
         t: now
@@ -579,6 +596,7 @@
       currentSurahNo = state.s;
       currentAyahNo = state.a;
       currentPartNo = state.p;
+      currentWordIndex = state.wi;
       overlayVisible = state.v;
 
       loadSurah(state.s).then(sData => {
@@ -596,37 +614,57 @@
       });
     }
 
-    function getVerseParts(fullText, maxWords) {
+    function getVerseParts(fullText, fullTrans, maxWords) {
       const waqfSigns = /[ۖۗۘۙۚۛ]/g;
       let verseParts = [];
-      const words = fullText.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w));
+      const arabicWords = fullText.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w));
+      const transWords = fullTrans.trim().split(/\s+/).filter(w => w.length > 0);
 
+      let rawTexts = [];
       if (maxWords === 0 && waqfSigns.test(fullText)) {
         const rawSegments = fullText.split(/(?<=[ۖۗۘۙۚۛ])/g);
         const threshold = 18; 
         let currentPartText = "";
-
         rawSegments.forEach(segment => {
           const sWords = segment.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w));
           const cWords = currentPartText.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w));
-          
           if (currentPartText === "") {
             currentPartText = segment;
           } else if (cWords.length + sWords.length <= threshold) {
             currentPartText += " " + segment;
           } else {
-            verseParts.push(currentPartText.trim());
+            rawTexts.push(currentPartText.trim());
             currentPartText = segment;
           }
         });
-        if (currentPartText.trim()) verseParts.push(currentPartText.trim());
-      } else if (maxWords > 0 && words.length > maxWords) {
-        for (let i = 0; i < words.length; i += maxWords) {
-          verseParts.push(words.slice(i, i + maxWords).join(' '));
+        if (currentPartText.trim()) rawTexts.push(currentPartText.trim());
+      } else if (maxWords > 0 && arabicWords.length > maxWords) {
+        for (let i = 0; i < arabicWords.length; i += maxWords) {
+          rawTexts.push(arabicWords.slice(i, i + maxWords).join(' '));
         }
       } else {
-        verseParts = [fullText];
+        rawTexts = [fullText];
       }
+
+      // Proportional Splitting for Translation
+      let cumulativeArabicWords = 0;
+      let cumulativeTransWords = 0;
+      rawTexts.forEach((txt, idx) => {
+        const partArabicWords = txt.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w)).length;
+        cumulativeArabicWords += partArabicWords;
+        
+        let partTrans = "";
+        if (idx === rawTexts.length - 1) {
+          partTrans = transWords.slice(cumulativeTransWords).join(' ');
+        } else {
+          const ratio = arabicWords.length > 0 ? cumulativeArabicWords / arabicWords.length : 1;
+          const targetTransWords = Math.round(transWords.length * ratio);
+          partTrans = transWords.slice(cumulativeTransWords, targetTransWords).join(' ');
+          cumulativeTransWords = targetTransWords;
+        }
+        verseParts.push({ text: txt, trans: partTrans });
+      });
+
       return verseParts;
     }
 
@@ -660,13 +698,14 @@
               
               loadSurah(currentSurahNo).then(sData => {
                 const fullText = sData.text[currentAyahNo] || "";
+                const fullTrans = sData.translations[settings.transLang]?.text[currentAyahNo] || "";
                 const maxWords = parseInt(settings.maxWords);
-                const verseParts = getVerseParts(fullText, maxWords);
+                const verseParts = getVerseParts(fullText, fullTrans, maxWords);
 
                 if (verseParts.length > 1) {
                   let cumulativeWords = 0;
                   for (let pIdx = 0; pIdx < verseParts.length; pIdx++) {
-                    const partWordCount = verseParts[pIdx].trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w)).length;
+                    const partWordCount = verseParts[pIdx].text.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w)).length;
                     cumulativeWords += partWordCount;
                     if (wordIdx < cumulativeWords) {
                       currentPartNo = pIdx;
@@ -693,41 +732,94 @@
     function applySettings(newSettings) {
       if (!newSettings) return;
       settings = newSettings;
-      document.body.style.setProperty('--highlight-color', settings.highlightColor);
       
       // Update UI controls
-      if (document.getElementById('size-verse')) document.getElementById('size-verse').value = settings.verseSize || 64;
-      if (document.getElementById('max-words')) document.getElementById('max-words').value = settings.maxWords !== undefined ? settings.maxWords : 0;
+      const ids = {
+        'size-verse': settings.verseSize || 64,
+        'size-surah': settings.surahSize || 24,
+        'size-trans': settings.transSize || 24,
+        'overlay-width': settings.overlayWidth || 85,
+        'max-words': settings.maxWords !== undefined ? settings.maxWords : 0,
+        'highlight-color': settings.highlightColor || '#FFD166',
+        'wrong-color': settings.wrongColor || '#ff595e',
+        'verse-color': settings.verseColor || '#ffffff',
+        'surah-color': settings.surahColor || '#ffffff',
+        'trans-color': settings.transColor || '#ffffff',
+        'show-trans': settings.transDisplay || 'block'
+      };
+
+      for (const [id, val] of Object.entries(ids)) {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+      }
+
+      // Update Labels
       if (document.getElementById('val-verse')) document.getElementById('val-verse').textContent = settings.verseSize || 64;
+      if (document.getElementById('val-surah')) document.getElementById('val-surah').textContent = settings.surahSize || 24;
+      if (document.getElementById('val-trans')) document.getElementById('val-trans').textContent = settings.transSize || 24;
+      if (document.getElementById('val-width')) document.getElementById('val-width').textContent = settings.overlayWidth || 85;
       if (document.getElementById('val-words')) document.getElementById('val-words').textContent = settings.maxWords !== undefined ? settings.maxWords : 0;
-      if (document.getElementById('show-trans')) document.getElementById('show-trans').value = settings.transDisplay || 'block';
-      if (document.getElementById('vertical-align')) document.getElementById('vertical-align').value = settings.verticalAlign || 'center';
-      if (document.getElementById('highlight-color')) document.getElementById('highlight-color').value = settings.highlightColor || '#FFD166';
     }
 
-    // Listeners
-    ['size-verse', 'max-words'].forEach(id => {
-      document.getElementById(id).addEventListener('input', (e) => {
-        const key = id === 'size-verse' ? 'verseSize' : 'maxWords';
-        settings[key] = e.target.value;
-        document.getElementById('val-' + (id === 'size-verse' ? 'verse' : 'words')).textContent = e.target.value;
-        syncState(overlayVisible);
-      });
-    });
+    function updateSettings() {
+      // Ambil nilai terbaru langsung dari DOM
+      const vSize = document.getElementById('size-verse').value;
+      const sSize = document.getElementById('size-surah').value;
+      const tSize = document.getElementById('size-trans').value;
+      const oWidth = document.getElementById('overlay-width').value;
+      const mWords = document.getElementById('max-words').value;
+      
+      const hColor = document.getElementById('highlight-color').value;
+      const wColor = document.getElementById('wrong-color').value;
+      const vColor = document.getElementById('verse-color').value;
+      const sColor = document.getElementById('surah-color').value;
+      const tColor = document.getElementById('trans-color').value;
+      const tDisp = document.getElementById('show-trans').value;
 
-    ['vertical-align', 'show-trans'].forEach(id => {
-      document.getElementById(id).addEventListener('change', (e) => {
-        const key = id === 'vertical-align' ? 'verticalAlign' : 'transDisplay';
-        settings[key] = e.target.value;
-        syncState(overlayVisible);
-      });
-    });
+      settings = {
+        verseSize: vSize,
+        surahSize: sSize,
+        transSize: tSize,
+        overlayWidth: oWidth,
+        maxWords: mWords,
+        highlightColor: hColor,
+        wrongColor: wColor,
+        verseColor: vColor,
+        surahColor: sColor,
+        transColor: tColor,
+        transDisplay: tDisp,
+        transLang: settings.transLang || 'id',
+        lineHeight: 1.6,
+        textAlign: 'center'
+      };
 
-    document.getElementById('highlight-color').addEventListener('input', (e) => {
-      settings.highlightColor = e.target.value;
-      document.body.style.setProperty('--highlight-color', settings.highlightColor);
+      // Update Labels di UI
+      if (document.getElementById('val-verse')) document.getElementById('val-verse').textContent = vSize;
+      if (document.getElementById('val-surah')) document.getElementById('val-surah').textContent = sSize;
+      if (document.getElementById('val-trans')) document.getElementById('val-trans').textContent = tSize;
+      if (document.getElementById('val-width')) document.getElementById('val-width').textContent = oWidth;
+      if (document.getElementById('val-words')) document.getElementById('val-words').textContent = mWords;
+
+      console.log("Sending Settings:", settings);
       syncState(overlayVisible);
+    }
+
+    // Pasang listener dengan lebih eksplisit
+    const inputIds = [
+      'size-verse', 'size-surah', 'size-trans', 'overlay-width', 'max-words', 
+      'highlight-color', 'wrong-color', 'verse-color', 'surah-color', 'trans-color'
+    ];
+    
+    inputIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.oninput = updateSettings;
+      }
     });
+    
+    if (document.getElementById('show-trans')) {
+      document.getElementById('show-trans').onchange = updateSettings;
+    }
 
     function toggleReadingStatus(cb) {
       readingStatus = cb.checked ? 'wrong' : 'correct';
@@ -839,12 +931,14 @@
       let nextS = currentSurahNo;
       let nextA = currentAyahNo;
       let nextP = currentPartNo;
+      let nextWi = currentWordIndex;
 
       loadSurah(nextS).then(sData => {
         if (!sData) return;
         const fullText = sData.text[nextA] || "";
+        const fullTrans = sData.translations[settings.transLang]?.text[nextA] || "";
         const maxWords = parseInt(settings.maxWords);
-        const verseParts = getVerseParts(fullText, maxWords);
+        const verseParts = getVerseParts(fullText, fullTrans, maxWords);
         const partsCount = verseParts.length;
 
         if (action === 'next') {
@@ -852,7 +946,7 @@
           if (nextP >= partsCount) {
             nextA++;
             nextP = 0;
-            // Jika ayat habis, cek surah selanjutnya
+            nextWi = -1;
             if (nextA > parseInt(sData.number_of_ayah)) {
               if (nextS < 114) { nextS++; nextA = 1; }
               else { nextA = parseInt(sData.number_of_ayah); nextP = partsCount - 1; }
@@ -862,26 +956,30 @@
           nextP--;
           if (nextP < 0) {
             nextA--;
+            nextWi = -1;
             if (nextA < 1) {
               if (nextS > 1) { 
                 nextS--; 
                 loadSurah(nextS).then(prevSData => {
                   nextA = parseInt(prevSData.number_of_ayah);
                   const pText = prevSData.text[nextA];
-                  const pParts = getVerseParts(pText, maxWords);
-                  syncState(true, nextS, nextA, pParts.length - 1);
+                  const pTrans = prevSData.translations[settings.transLang]?.text[nextA] || "";
+                  const pParts = getVerseParts(pText, pTrans, maxWords);
+                  syncState(true, nextS, nextA, pParts.length - 1, -1);
                 });
                 return;
               } else { nextA = 1; nextP = 0; }
             } else {
               const pText = sData.text[nextA];
-              const pParts = getVerseParts(pText, maxWords);
+              const pTrans = sData.translations[settings.transLang]?.text[nextA] || "";
+              const pParts = getVerseParts(pText, pTrans, maxWords);
               nextP = pParts.length - 1;
             }
           }
         } else if (action === 'nextAyah') {
           nextA++;
           nextP = 0;
+          nextWi = -1;
           if (nextA > parseInt(sData.number_of_ayah)) {
             if (nextS < 114) { nextS++; nextA = 1; }
             else { nextA = parseInt(sData.number_of_ayah); }
@@ -889,28 +987,28 @@
         } else if (action === 'prevAyah') {
           nextA--;
           nextP = 0;
+          nextWi = -1;
           if (nextA < 1) {
-            if (nextS > 1) { nextS--; loadSurah(nextS).then(ps => syncState(true, nextS, parseInt(ps.number_of_ayah), 0)); return; }
+            if (nextS > 1) { nextS--; loadSurah(nextS).then(ps => syncState(true, nextS, parseInt(ps.number_of_ayah), 0, -1)); return; }
             else { nextA = 1; }
           }
         } else if (action === 'selected') {
           nextS = selectedSurah;
           nextA = selectedAyah;
           nextP = 0;
+          nextWi = -1;
         } else if (action === 'random') {
           nextS = Math.floor(Math.random() * 114) + 1;
-          loadSurah(nextS).then(s => {
-            nextA = Math.floor(Math.random() * parseInt(s.number_of_ayah)) + 1;
-            currentWordIndex = -1;
-            readingStatus = 'correct';
-            syncState(true, nextS, nextA, 0);
+          loadSurah(nextS).then(rs => {
+            nextA = Math.floor(Math.random() * parseInt(rs.number_of_ayah)) + 1;
+            nextP = 0;
+            nextWi = -1;
+            syncState(true, nextS, nextA, nextP, -1);
           });
           return;
         }
 
-        currentWordIndex = -1;
-        readingStatus = 'correct';
-        syncState(true, nextS, nextA, nextP);
+        syncState(true, nextS, nextA, nextP, nextWi);
       });
     }
 
