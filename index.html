@@ -93,8 +93,8 @@
 
     .verse span {
       display: inline-block;
-      padding: 0;
-      margin: 0;
+      padding: 0.5em 0.3em; /* Ruang kanvas ekstra besar untuk mengamankan kaligrafi ekstrim */
+      margin: -0.5em -0.3em; /* Menarik kembali agar jarak antar kata tetap rapat dan normal */
       position: relative;
       font-weight: 500;
       
@@ -117,10 +117,11 @@
     }
 
     .verse span.waqf-sign {
-      background: none !important;
+      background-image: none !important;
       -webkit-text-fill-color: var(--verse-color);
-      opacity: 0.3;
-      padding: 0 4px;
+      opacity: 0.7;
+      padding: 0.5em 2px;
+      margin-right: -5px; /* Tarik tanda waqaf sedikit lebih dekat ke kata sebelumnya */
     }
 
     .verse span.reading.wrong {
@@ -191,7 +192,18 @@
         .then(res => res.json())
         .then(data => {
           surahList = data;
-          pollSync();
+          
+          fetch('/sync')
+            .then(res => res.json())
+            .then(state => {
+              if (state) {
+                lastSyncTime = state.t;
+                applySettings(state.settings);
+                renderVerse(state.s, state.a, state.p, state.wi, state.st);
+                if (state.v) overlay.classList.remove('hidden');
+              }
+              initSSE();
+            });
         });
     }
 
@@ -249,7 +261,13 @@
           background-image: linear-gradient(90deg, ${vColor} 50%, ${wColor} 50%) !important;
           animation: blink-wrong 1s infinite cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
-        .verse span.waqf-sign { -webkit-text-fill-color: ${vColor} !important; opacity: 0.3 !important; }
+        .verse span.waqf-sign { 
+          background-image: none !important;
+          -webkit-background-clip: border-box !important;
+          background-clip: border-box !important;
+          -webkit-text-fill-color: ${vColor} !important; 
+          opacity: 0.7 !important; 
+        }
       `;
       
       const padding = settings.overlayPadding || 30;
@@ -405,29 +423,30 @@
       });
     }
 
-    function pollSync() {
-      if (isPolling) return;
-      isPolling = true;
+    function initSSE() {
+      const source = new EventSource('/events');
       
-      const debugEl = document.getElementById('debug-info');
-      
-      fetch('/sync?_t=' + Date.now())
-        .then(res => res.json())
-        .then(state => {
+      source.onmessage = function(event) {
+        try {
+          const state = JSON.parse(event.data);
           if (state && state.t > lastSyncTime) {
             lastSyncTime = state.t;
-
             applySettings(state.settings);
             renderVerse(state.s, state.a, state.p, state.wi, state.st);
             
             if (state.v) overlay.classList.remove('hidden');
             else overlay.classList.add('hidden');
           }
-        })
-        .finally(() => {
-          isPolling = false;
-          setTimeout(pollSync, 300);
-        });
+        } catch(e) {
+          console.error("SSE parse error", e);
+        }
+      };
+
+      source.onerror = function(err) {
+        console.error("SSE connection error, reconnecting...");
+        source.close();
+        setTimeout(initSSE, 2000); // Reconnect fallback
+      };
     }
 
     // Deteksi jika dibuka di Chrome biasa (Bukan OBS)
