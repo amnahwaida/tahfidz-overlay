@@ -2,7 +2,7 @@
   "name": "Tahfidz Overlay Pro",
   "short_name": "Tahfidz",
   "description": "Overlay Quran untuk Tahfidz & Presentasi",
-  "start_url": "/",
+  "start_url": "/control.html",
   "display": "standalone",
   "background_color": "#111111",
   "theme_color": "#FFD166",

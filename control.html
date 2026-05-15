@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="id" dir="ltr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Control Panel - Tahfidz Overlay</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#FFD166">
+  <link rel="apple-touch-icon" href="icon.png">
+  <style>
+    body,
+    html {
+      margin: 0;
+      min-height: 100vh;
+      background: #0f0f0f;
+      font-family: 'Inter', sans-serif;
+      box-sizing: border-box;
+      padding: 20px;
+    }
+
+    #controls,
+    #controls * {
+      box-sizing: border-box;
+    }
+
+    .glass-panel {
+      background: #1a1a1a;
+      border-radius: 16px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
+      color: #fff;
+      max-width: 1400px;
+      min-height: calc(100vh - 40px);
+    }
+
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 20px;
+      padding: 20px;
+      flex: 1;
+    }
+
+    .main-column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .side-column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 20px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .control-header {
+      font-size: 18px;
+      font-weight: bold;
+      color: #FFD166;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+    }
+
+    .minimize-btn {
+      margin-left: auto;
+      font-size: 20px;
+    }
+
+    .panel-content {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .control-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .control-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .search-box {
+      width: 100%;
+      position: relative;
+    }
+
+    .results-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #2a2a2a;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      margin-top: 5px;
+      max-height: 250px;
+      overflow-y: auto;
+      z-index: 2000;
+      display: none;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+
+    .result-item {
+      padding: 14px 16px;
+      cursor: pointer;
+      font-size: 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      transition: background 0.2s;
+      text-align: left;
+    }
+
+    .result-item:hover {
+      background: #333;
+      color: #FFD166;
+    }
+
+    input, select, button {
+      padding: 14px 16px;
+      font-size: 15px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: #262626;
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    input:focus, select:focus {
+      border-color: #FFD166;
+      background: #2d2d2d;
+      box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.1);
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      color: #fff;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    button {
+      background: #FFD166;
+      color: #000;
+      font-weight: 700;
+      border: none;
+      flex: 1;
+    }
+
+    button:hover {
+      background: #ffdb85;
+      transform: translateY(-1px);
+    }
+
+    button.secondary {
+      background: #333;
+      color: #eee;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .control-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #888;
+      font-weight: 600;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 16px;
+      border-radius: 12px;
+    }
+
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      color: #ddd;
+    }
+
+    .setting-item input[type="range"] {
+      width: 50%;
+      height: 8px;
+      -webkit-appearance: none;
+      background: #444;
+      border-radius: 4px;
+      padding: 0;
+    }
+
+    .setting-item input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #FFD166;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid #fff;
+    }
+
+
+
+
+    #db-status {
+      font-size: 10px;
+      opacity: 0.6;
+    }
+
+    .current-status {
+      background: #27ae60;
+      color: white;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    .verse-clickable {
+      direction: rtl;
+      font-family: 'LPMQ Isep Misbah', 'Amiri', serif;
+      font-size: 28px;
+      line-height: 1.8;
+      background: #222;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #444;
+      margin-bottom: 20px;
+      text-align: center;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .verse-clickable span {
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .verse-clickable span:hover {
+      background: rgba(255, 209, 102, 0.2);
+      color: #FFD166;
+    }
+
+    .verse-clickable span.active {
+      background: var(--highlight-color, #FFD166);
+      color: #000;
+    }
+
+    .verse-clickable span.wrong {
+      background: #ff595e !important;
+      color: #fff !important;
+      animation: blink-bg 0.6s step-end infinite;
+    }
+
+    @keyframes blink-bg {
+      0%, 100% { background-color: #ff595e; }
+      50% { background-color: #444; }
+    }
+
+    /* Toggle Switch Styles */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 26px;
+    }
+
+    .switch input { 
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #27ae60;
+      transition: .4s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #c0392b;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="glass-panel">
+    <div class="control-header">
+      <span>📱</span> Panel Kontrol <small id="db-status">Memuat DB...</small>
+    </div>
+    
+    <div class="dashboard-layout">
+      <!-- Kolom Utama: Tampilan Ayat & Kontrol Langsung -->
+      <div class="main-column">
+        <div id="current-info" class="current-status" style="margin-bottom: 0; font-size: 22px; padding: 25px; border-radius: 16px;">
+          Sedang Ditampilkan: -
+        </div>
+
+        <div class="control-group" style="gap: 12px;">
+          <button onclick="showVerse('prev')" class="secondary" style="flex: 1; height: 50px; font-size: 14px;">⏮ SURAH SEBELUMNYA</button>
+          <button onclick="showVerse('prevAyah')" class="secondary" style="flex: 1; height: 50px; font-size: 14px;">◀ AYAT SEBELUMNYA</button>
+          <button onclick="showVerse('nextAyah')" style="flex: 1; height: 50px; font-size: 14px; background: #FFD166; color: #000;">AYAT SELANJUTNYA ▶</button>
+          <button onclick="showVerse('next')" style="flex: 1; height: 50px; font-size: 14px; background: #FFD166; color: #000;">SURAH SELANJUTNYA ⏭</button>
+        </div>
+
+        <div class="verse-container" style="flex: 1; display: flex; flex-direction: column; background: #111; border-radius: 20px; padding: 40px; border: 1px solid #333; box-shadow: inset 0 0 50px rgba(0,0,0,0.5);">
+          <div class="control-label" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+            <span style="font-size: 14px; color: #888; letter-spacing: 2px;">PANEL NAVIGASI AYAT</span>
+            <div style="display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.05); padding: 8px 15px; border-radius: 30px;">
+              <span id="status-label" style="font-size: 13px; font-weight: bold; color: #27ae60;">BENAR</span>
+              <label class="switch">
+                <input type="checkbox" id="status-toggle" onchange="toggleReadingStatus(this)">
+                <span class="slider"></span>
+              </label>
+              <span style="font-size: 13px; font-weight: bold; color: #c0392b;">SALAH</span>
+            </div>
+          </div>
+          
+          <div id="verse-display" class="verse-clickable" style="flex: 1; font-size: 52px; display: flex; align-items: center; justify-content: center; background: none; border: none; margin: 0; line-height: 1.6;">
+            Pilih surah/ayat untuk mulai...
+          </div>
+
+          <div style="margin-top: 30px; color: #666; text-align: center; font-size: 13px; border-top: 1px solid #333; padding-top: 20px;">
+            Tip: Klik pada kata Arab di atas untuk menandai progres bacaan santri secara real-time.
+          </div>
+        </div>
+
+
+
+        <div class="control-group" style="gap: 15px;">
+          <button onclick="setBookmark()" style="background: #2ecc71; color: white; height: 65px; font-size: 18px; border-radius: 15px;">📌 SIMPAN POSISI (BOOKMARK)</button>
+          <button onclick="gotoBookmark()" class="secondary" style="height: 65px; font-size: 18px; border-radius: 15px;">📍 KE BOOKMARK TERAKHIR</button>
+        </div>
+      </div>
+
+      <!-- Kolom Samping: Pencarian & Pengaturan -->
+      <div class="side-column">
+        <div>
+          <div class="control-label" style="margin-bottom: 12px;">🔍 PENCARIAN CEPAT</div>
+          <div class="search-box" style="margin-bottom: 12px;">
+            <input type="text" id="surah-search" placeholder="Cari Surah..." autocomplete="off" style="width: 100%;">
+            <button id="clear-surah" class="clear-btn" onclick="clearInput('surah-search')">&times;</button>
+            <div id="surah-results" class="results-list"></div>
+          </div>
+          
+          <div class="search-box" style="display: flex; gap: 8px;">
+            <div style="flex: 1; position: relative;">
+              <input type="text" id="ayah-search" placeholder="Ayat..." autocomplete="off" style="width: 100%;">
+              <button id="clear-ayah" class="clear-btn" onclick="clearInput('ayah-search')">&times;</button>
+              <div id="ayah-results" class="results-list"></div>
+            </div>
+            <button onclick="showVerse('selected')" style="flex: 0 0 80px; background: #FFD166; color: #000; font-weight: bold;">KIRIM</button>
+          </div>
+          
+          <button onclick="showVerse('random')" style="background: #e67e22; color: white; margin-top: 10px; width: 100%;">🎲 SURAH ACAK</button>
+        </div>
+
+        <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+          <div class="control-label" style="margin-bottom: 15px;">⚙️ PENGATURAN TAMPILAN</div>
+          <div class="settings-grid">
+            <div class="setting-item">
+              <span>Ukuran Ayat</span>
+              <input type="range" id="size-verse" min="20" max="150" value="64">
+            </div>
+            <div class="setting-item">
+              <span>Ukuran Surah</span>
+              <input type="range" id="size-surah" min="10" max="80" value="24">
+            </div>
+            <div class="setting-item">
+              <span>Ukuran Terjemah</span>
+              <input type="range" id="size-trans" min="10" max="80" value="24">
+            </div>
+            <div class="setting-item">
+              <span>Lebar Overlay (%)</span>
+              <input type="range" id="overlay-width" min="50" max="100" value="85">
+            </div>
+            <div class="setting-item">
+              <span>Potong Ayat</span>
+              <input type="range" id="max-words" min="0" max="50" value="0">
+            </div>
+            <div class="setting-item">
+              <span>Warna Highlight</span>
+              <input type="color" id="highlight-color" value="#FFD166" style="width: 60px; height: 35px; padding: 2px;">
+            </div>
+            <div class="setting-item">
+              <span>Tampilkan Terjemah</span>
+              <select id="show-trans" style="width: 100px;">
+                <option value="block">Ya</option>
+                <option value="none">Tidak</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <span>Posisi Vertikal</span>
+              <select id="vertical-align" style="width: 100px;">
+                <option value="center">Tengah</option>
+                <option value="flex-start">Atas</option>
+                <option value="flex-end">Bawah</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;">
+          <button class="secondary" onclick="hideOverlay()" style="width:100%; border-color: #c0392b; color: #ff7675;">❌ SEMBUNYIKAN OVERLAY</button>
+          <button class="secondary" onclick="window.open('/', '_blank')" style="width:100%; font-size:12px; opacity: 0.7;">🔗 BUKA VIEW OBS (TAB BARU)</button>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <script>
+    const SURAH_LIST_FILE = 'data/surah_list.json';
+    const QURAN_JSON_PATH = 'quran-json/surah/';
+
+    let surahList = [];
+    let surahCache = {};
+    let currentSurahNo = 1;
+    let currentAyahNo = 1;
+    let currentPartNo = 0;
+    let versePartsCount = 1;
+    let lastSyncTime = 0;
+    let isPolling = false;
+    let overlayVisible = false;
+    let currentWordIndex = -1; 
+    let readingStatus = 'correct'; 
+
+
+    // Legacy internal state for search
+    let selectedSurah = 1;
+    let selectedAyah = 1;
+
+    let settings = {
+      verseSize: 64,
+      surahSize: 24,
+      transSize: 24,
+      lineHeight: 1.6,
+      overlayWidth: 85,
+      overlayPadding: 30,
+      maxWords: 0,
+      textAlign: 'center',
+      verticalAlign: 'center',
+      transLang: 'id',
+      transDisplay: 'block',
+      highlightColor: '#FFD166'
+    };
+
+    const surahSearch = document.getElementById('surah-search');
+    const surahResults = document.getElementById('surah-results');
+    const ayahSearch = document.getElementById('ayah-search');
+    const ayahResults = document.getElementById('ayah-results');
+    const infoEl = document.getElementById('current-info');
+    const verseDisplayEl = document.getElementById('verse-display');
+
+    function initDatabase() {
+      const statusEl = document.getElementById('db-status');
+      fetch(SURAH_LIST_FILE + '?t=' + Date.now())
+        .then(res => res.json())
+        .then(data => {
+          surahList = data;
+          statusEl.textContent = `DB: OK (${surahList.length})`;
+          
+          // Initial Sync from Server
+          fetch('/sync?initial=1')
+            .then(res => res.json())
+            .then(state => {
+              if (state && state.t > 0) {
+                lastSyncTime = state.t;
+                if (state.settings) applySettings(state.settings);
+                updateUIState(state);
+              }
+            });
+        })
+        .catch(e => {
+          statusEl.textContent = 'DB: ERROR';
+        });
+    }
+
+    initDatabase();
+
+    function loadSurah(no) {
+      if (surahCache[no]) return Promise.resolve(surahCache[no]);
+      return fetch(`${QURAN_JSON_PATH}${no}.json`)
+        .then(res => res.json())
+        .then(data => {
+          surahCache[no] = data[no];
+          return surahCache[no];
+        });
+    }
+
+    function syncState(visible, sNo, aNo, pNo) {
+      var now = Date.now();
+      lastSyncTime = now;
+      var syncS = (sNo !== undefined) ? parseInt(sNo) : parseInt(currentSurahNo);
+      var syncA = (aNo !== undefined) ? parseInt(aNo) : parseInt(currentAyahNo);
+      var syncP = (pNo !== undefined) ? parseInt(pNo) : parseInt(currentPartNo);
+      
+      const state = {
+        s: syncS,
+        a: syncA,
+        p: syncP,
+        v: visible,
+        wi: currentWordIndex,
+        st: readingStatus,
+        settings: settings,
+        t: now
+      };
+      
+      fetch('/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state)
+      });
+
+      updateUIState(state);
+    }
+
+    function updateUIState(state) {
+      currentSurahNo = state.s;
+      currentAyahNo = state.a;
+      currentPartNo = state.p;
+      overlayVisible = state.v;
+
+      loadSurah(state.s).then(sData => {
+        if (sData) {
+          let text = `${sData.name_latin} (${state.s}):${state.a}`;
+          if (!state.v) text += " (Hidden)";
+          infoEl.textContent = "Sedang Ditampilkan: " + text;
+          infoEl.style.background = state.v ? "#27ae60" : "#c0392b";
+          
+          surahSearch.value = sData.name_latin;
+          ayahSearch.value = state.a;
+          updateAyahList(state.s);
+          renderClickableVerse(sData.text[state.a], state.wi);
+        }
+      });
+    }
+
+    function getVerseParts(fullText, maxWords) {
+      const waqfSigns = /[ۖۗۘۙۚۛ]/g;
+      let verseParts = [];
+      const words = fullText.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w));
+
+      if (maxWords === 0 && waqfSigns.test(fullText)) {
+        const rawSegments = fullText.split(/(?<=[ۖۗۘۙۚۛ])/g);
+        const threshold = 18; 
+        let currentPartText = "";
+
+        rawSegments.forEach(segment => {
+          const sWords = segment.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w));
+          const cWords = currentPartText.trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w));
+          
+          if (currentPartText === "") {
+            currentPartText = segment;
+          } else if (cWords.length + sWords.length <= threshold) {
+            currentPartText += " " + segment;
+          } else {
+            verseParts.push(currentPartText.trim());
+            currentPartText = segment;
+          }
+        });
+        if (currentPartText.trim()) verseParts.push(currentPartText.trim());
+      } else if (maxWords > 0 && words.length > maxWords) {
+        for (let i = 0; i < words.length; i += maxWords) {
+          verseParts.push(words.slice(i, i + maxWords).join(' '));
+        }
+      } else {
+        verseParts = [fullText];
+      }
+      return verseParts;
+    }
+
+    function renderClickableVerse(text, activeWi) {
+      if (!text) return;
+      const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+      verseDisplayEl.innerHTML = '';
+      let wordCounter = 0;
+      words.forEach((word) => {
+        const isWaqf = /^[ۖۗۘۙۚۛ]$/.test(word);
+        const span = document.createElement('span');
+        span.textContent = word + ' ';
+        
+        // Simpan index asli untuk closure klik
+        const indexForThisWord = isWaqf ? -1 : wordCounter;
+
+        if (indexForThisWord !== -1 && indexForThisWord <= activeWi) {
+          span.classList.add('active');
+          if (indexForThisWord === activeWi && readingStatus === 'wrong') {
+            span.classList.add('wrong');
+          }
+        }
+
+        if (indexForThisWord !== -1) {
+          const wordIdx = wordCounter; // capture current value
+          span.onclick = () => {
+            if (currentWordIndex === wordIdx) {
+              currentWordIndex = -1;
+            } else {
+              currentWordIndex = wordIdx;
+              
+              loadSurah(currentSurahNo).then(sData => {
+                const fullText = sData.text[currentAyahNo] || "";
+                const maxWords = parseInt(settings.maxWords);
+                const verseParts = getVerseParts(fullText, maxWords);
+
+                if (verseParts.length > 1) {
+                  let cumulativeWords = 0;
+                  for (let pIdx = 0; pIdx < verseParts.length; pIdx++) {
+                    const partWordCount = verseParts[pIdx].trim().split(/\s+/).filter(w => w.length > 0 && !/^[ۖۗۘۙۚۛ]$/.test(w)).length;
+                    cumulativeWords += partWordCount;
+                    if (wordIdx < cumulativeWords) {
+                      currentPartNo = pIdx;
+                      break;
+                    }
+                  }
+                } else {
+                  currentPartNo = 0;
+                }
+                syncState(overlayVisible);
+                renderClickableVerse(text, currentWordIndex);
+              });
+              return;
+            }
+            syncState(overlayVisible);
+            renderClickableVerse(text, currentWordIndex);
+          };
+          wordCounter++;
+        }
+        verseDisplayEl.appendChild(span);
+      });
+    }
+
+    function applySettings(newSettings) {
+      if (!newSettings) return;
+      settings = newSettings;
+      document.body.style.setProperty('--highlight-color', settings.highlightColor);
+      
+      // Update UI controls
+      if (document.getElementById('size-verse')) document.getElementById('size-verse').value = settings.verseSize || 64;
+      if (document.getElementById('max-words')) document.getElementById('max-words').value = settings.maxWords !== undefined ? settings.maxWords : 0;
+      if (document.getElementById('val-verse')) document.getElementById('val-verse').textContent = settings.verseSize || 64;
+      if (document.getElementById('val-words')) document.getElementById('val-words').textContent = settings.maxWords !== undefined ? settings.maxWords : 0;
+      if (document.getElementById('show-trans')) document.getElementById('show-trans').value = settings.transDisplay || 'block';
+      if (document.getElementById('vertical-align')) document.getElementById('vertical-align').value = settings.verticalAlign || 'center';
+      if (document.getElementById('highlight-color')) document.getElementById('highlight-color').value = settings.highlightColor || '#FFD166';
+    }
+
+    // Listeners
+    ['size-verse', 'max-words'].forEach(id => {
+      document.getElementById(id).addEventListener('input', (e) => {
+        const key = id === 'size-verse' ? 'verseSize' : 'maxWords';
+        settings[key] = e.target.value;
+        document.getElementById('val-' + (id === 'size-verse' ? 'verse' : 'words')).textContent = e.target.value;
+        syncState(overlayVisible);
+      });
+    });
+
+    ['vertical-align', 'show-trans'].forEach(id => {
+      document.getElementById(id).addEventListener('change', (e) => {
+        const key = id === 'vertical-align' ? 'verticalAlign' : 'transDisplay';
+        settings[key] = e.target.value;
+        syncState(overlayVisible);
+      });
+    });
+
+    document.getElementById('highlight-color').addEventListener('input', (e) => {
+      settings.highlightColor = e.target.value;
+      document.body.style.setProperty('--highlight-color', settings.highlightColor);
+      syncState(overlayVisible);
+    });
+
+    function toggleReadingStatus(cb) {
+      readingStatus = cb.checked ? 'wrong' : 'correct';
+      const label = document.getElementById('status-label');
+      label.textContent = cb.checked ? 'SALAH' : 'BENAR';
+      label.style.color = cb.checked ? '#c0392b' : '#27ae60';
+      syncState(overlayVisible);
+    }
+
+    function setReadingStatus(status) {
+      readingStatus = status;
+      const cb = document.getElementById('status-toggle');
+      if (cb) cb.checked = (status === 'wrong');
+      const label = document.getElementById('status-label');
+      if (label) {
+        label.textContent = (status === 'wrong') ? 'SALAH' : 'BENAR';
+        label.style.color = (status === 'wrong') ? '#c0392b' : '#27ae60';
+      }
+      syncState(overlayVisible);
+    }
+
+    function updateAyahList(sNo) {
+      ayahResults.innerHTML = '';
+      loadSurah(sNo).then(sData => {
+        if (sData) {
+          const count = parseInt(sData.number_of_ayah);
+          for (let i = 1; i <= count; i++) {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+            div.textContent = `Ayat ${i}`;
+            div.onclick = () => {
+              ayahSearch.value = i;
+              selectedAyah = i;
+              ayahResults.style.display = 'none';
+              showVerse('selected');
+            };
+            ayahResults.appendChild(div);
+          }
+        }
+      });
+    }
+
+    surahSearch.addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase().trim();
+      if (!val) { surahResults.style.display = 'none'; return; }
+      
+      const matches = surahList.filter(s =>
+        s.name.toLowerCase().includes(val) ||
+        (s.name_latin && s.name_latin.toLowerCase().includes(val)) ||
+        s.no.toString() === val
+      ).slice(0, 10);
+
+      if (matches.length > 0) {
+        surahResults.innerHTML = '';
+        matches.forEach(s => {
+          const div = document.createElement('div');
+          div.className = 'result-item';
+          div.innerHTML = `<b>${s.no}.</b> ${s.name_latin || s.name}`;
+          div.onclick = () => {
+            surahSearch.value = s.name_latin || s.name;
+            selectedSurah = s.no;
+            selectedAyah = 1;
+            surahResults.style.display = 'none';
+            updateAyahList(s.no);
+            ayahSearch.value = "1";
+            showVerse('selected');
+          };
+          surahResults.appendChild(div);
+        });
+        surahResults.style.display = 'block';
+      }
+    });
+
+    // Smart Search Ayah
+    ayahSearch.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      ayahResults.style.display = 'block';
+      const items = ayahResults.querySelectorAll('.result-item');
+      let found = 0;
+      items.forEach(item => {
+        if (!val || item.textContent.toLowerCase().includes(val.toLowerCase())) {
+          item.style.display = 'block';
+          found++;
+        } else {
+          item.style.display = 'none';
+        }
+      });
+      if (found === 0) ayahResults.style.display = 'none';
+    });
+
+    ayahSearch.addEventListener('focus', () => {
+      if (ayahResults.children.length > 0) {
+        ayahResults.style.display = 'block';
+        const items = ayahResults.querySelectorAll('.result-item');
+        items.forEach(item => item.style.display = 'block');
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!surahSearch.contains(e.target) && !surahResults.contains(e.target)) {
+        surahResults.style.display = 'none';
+      }
+      if (!ayahSearch.contains(e.target) && !ayahResults.contains(e.target)) {
+        ayahResults.style.display = 'none';
+      }
+    });
+
+    function showVerse(action) {
+      let nextS = currentSurahNo;
+      let nextA = currentAyahNo;
+      let nextP = currentPartNo;
+
+      loadSurah(nextS).then(sData => {
+        if (!sData) return;
+        const fullText = sData.text[nextA] || "";
+        const maxWords = parseInt(settings.maxWords);
+        const verseParts = getVerseParts(fullText, maxWords);
+        const partsCount = verseParts.length;
+
+        if (action === 'next') {
+          nextP++;
+          if (nextP >= partsCount) {
+            nextA++;
+            nextP = 0;
+            // Jika ayat habis, cek surah selanjutnya
+            if (nextA > parseInt(sData.number_of_ayah)) {
+              if (nextS < 114) { nextS++; nextA = 1; }
+              else { nextA = parseInt(sData.number_of_ayah); nextP = partsCount - 1; }
+            }
+          }
+        } else if (action === 'prev') {
+          nextP--;
+          if (nextP < 0) {
+            nextA--;
+            if (nextA < 1) {
+              if (nextS > 1) { 
+                nextS--; 
+                loadSurah(nextS).then(prevSData => {
+                  nextA = parseInt(prevSData.number_of_ayah);
+                  const pText = prevSData.text[nextA];
+                  const pParts = getVerseParts(pText, maxWords);
+                  syncState(true, nextS, nextA, pParts.length - 1);
+                });
+                return;
+              } else { nextA = 1; nextP = 0; }
+            } else {
+              const pText = sData.text[nextA];
+              const pParts = getVerseParts(pText, maxWords);
+              nextP = pParts.length - 1;
+            }
+          }
+        } else if (action === 'nextAyah') {
+          nextA++;
+          nextP = 0;
+          if (nextA > parseInt(sData.number_of_ayah)) {
+            if (nextS < 114) { nextS++; nextA = 1; }
+            else { nextA = parseInt(sData.number_of_ayah); }
+          }
+        } else if (action === 'prevAyah') {
+          nextA--;
+          nextP = 0;
+          if (nextA < 1) {
+            if (nextS > 1) { nextS--; loadSurah(nextS).then(ps => syncState(true, nextS, parseInt(ps.number_of_ayah), 0)); return; }
+            else { nextA = 1; }
+          }
+        } else if (action === 'selected') {
+          nextS = selectedSurah;
+          nextA = selectedAyah;
+          nextP = 0;
+        } else if (action === 'random') {
+          nextS = Math.floor(Math.random() * 114) + 1;
+          loadSurah(nextS).then(s => {
+            nextA = Math.floor(Math.random() * parseInt(s.number_of_ayah)) + 1;
+            currentWordIndex = -1;
+            readingStatus = 'correct';
+            syncState(true, nextS, nextA, 0);
+          });
+          return;
+        }
+
+        currentWordIndex = -1;
+        readingStatus = 'correct';
+        syncState(true, nextS, nextA, nextP);
+      });
+    }
+
+    function hideOverlay() {
+      syncState(false);
+    }
+
+    function clearInput(id) {
+      document.getElementById(id).value = '';
+      if (id === 'surah-search') surahResults.style.display = 'none';
+      else ayahResults.style.display = 'none';
+    }
+
+    function setBookmark() {
+      localStorage.setItem('tahfidz_bookmark', JSON.stringify({ s: currentSurahNo, a: currentAyahNo }));
+      alert("📍 Bookmark disimpan!");
+    }
+
+    function gotoBookmark() {
+      const b = JSON.parse(localStorage.getItem('tahfidz_bookmark'));
+      if (b) syncState(true, b.s, b.a, 0);
+    }
+
+    // Polling to stay in sync with other controllers
+    setInterval(() => {
+      if (isPolling) return;
+      isPolling = true;
+      fetch('/sync?_t=' + Date.now())
+        .then(res => res.json())
+        .then(state => {
+          // Allow sync if state is newer OR if it's the very first sync
+          if (state && (state.t > lastSyncTime || lastSyncTime === 0)) {
+            lastSyncTime = state.t;
+            applySettings(state.settings);
+            currentWordIndex = state.wi !== undefined ? state.wi : -1;
+            readingStatus = state.st || 'correct';
+            updateUIState(state);
+          }
+        })
+        .finally(() => isPolling = false);
+    }, 1000);
+
+    // Keyboard Shortcuts for PC
+    document.addEventListener('keydown', (e) => {
+      // Don't trigger shortcuts if user is typing in search boxes
+      if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT') return;
+      
+      switch(e.key) {
+        case 'ArrowRight': showVerse('nextAyah'); break;
+        case 'ArrowLeft':  showVerse('prevAyah'); break;
+        case 'ArrowUp':    showVerse('prev'); break;
+        case 'ArrowDown':  showVerse('next'); break;
+        case 'v': 
+        case 'V':
+          overlayVisible = !overlayVisible;
+          syncState(overlayVisible);
+          break;
+      }
+    });
+  </script>
+</body>
+</html>

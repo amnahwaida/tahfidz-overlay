@@ -13,7 +13,30 @@ class ThreadingSimpleServer(socketserver.ThreadingMixIn, socketserver.TCPServer)
 
 class SyncHandler(http.server.SimpleHTTPRequestHandler):
     # Global state untuk sinkronisasi antar browser
-    shared_state = {"currentIndex": -1, "visible": False, "timestamp": 0}
+    # State awal aplikasi
+    shared_state = {
+        "s": 1, 
+        "a": 1, 
+        "p": 0, 
+        "v": False, 
+        "wi": -1, 
+        "st": "correct",
+        "settings": {
+            "verseSize": 64,
+            "surahSize": 24,
+            "transSize": 24,
+            "lineHeight": 1.6,
+            "overlayWidth": 85,
+            "overlayPadding": 30,
+            "maxWords": 0,
+            "textAlign": "center",
+            "verticalAlign": "center",
+            "transLang": "id",
+            "transDisplay": "block",
+            "highlightColor": "#FFD166"
+        },
+        "t": 1
+    }
 
     def do_POST(self):
         if self.path.startswith('/sync'):
@@ -56,22 +79,22 @@ if __name__ == '__main__':
         except:
             local_ip = "127.0.0.1"
             
-        print(f"✅ Server tersinkronisasi berjalan di port {PORT}")
-        print(f"💻 Akses lokal: http://localhost:{PORT}")
-        print(f"📱 Akses via HP / Jaringan: http://{local_ip}:{PORT}")
+        print(f"✅ Server Tahfidz Overlay berjalan di port {PORT}")
+        print(f"📺 VIEW (untuk OBS): http://localhost:{PORT}/")
+        print(f"🎮 CONTROL (untuk HP/Laptop): http://localhost:{PORT}/control.html")
+        print(f"📱 Akses Jaringan: http://{local_ip}:{PORT}/control.html")
         print("Tekan Ctrl+C untuk menghentikan.")
         
-        # Buka browser otomatis (lewati jika di Docker)
-        if os.environ.get('DOCKER_RUNNING') != 'true':
-            def open_browser():
-                import time
-                time.sleep(1)
-                try:
-                    webbrowser.open(f"http://localhost:{PORT}")
-                except:
-                    pass
-            
-            threading.Thread(target=open_browser, daemon=True).start()
+        # Buka browser otomatis ke panel kontrol
+        def open_browser():
+            import time
+            time.sleep(1)
+            try:
+                webbrowser.open(f"http://localhost:{PORT}/control.html")
+            except:
+                pass
+        
+        threading.Thread(target=open_browser, daemon=True).start()
         
         try:
             httpd.serve_forever()
